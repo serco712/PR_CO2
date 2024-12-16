@@ -1,5 +1,8 @@
 {
     "C_Cpp.intelliSenseEngine": "default",
     "idf.espIdfPath": "/home/sergio/Programs/ESPRESSIF/v5.3.1/esp-idf",
-    "idf.toolsPath": "/home/sergio/.espressif"
+    "idf.toolsPath": "/home/sergio/.espressif",
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ]
 }
