@@ -34,11 +34,14 @@
 
 
 //variables globales
-
 int interval = 1000; // Periodo de publicación
 bool pub_enabled = true;
 
 static const char *TAG = "mqtt_example";
+const char *topic_data = "Informatica/3/Lab/CO2/data";
+const char *topic_enable = "Informatica/3/Lab/CO2/enable";
+const char *topic_disable = "Informatica/3/Lab/CO2/disable";
+int QoS = 1;
 
 typedef struct {
     esp_mqtt_client_handle_t client;
@@ -50,17 +53,14 @@ typedef struct {
 
 void pub_task(void *param){
 
-         pub_task_params_t *params = (pub_task_params_t *) param;
-         esp_mqtt_client_handle_t client = params->client;
-       
+    pub_task_params_t *params = (pub_task_params_t *) param;
+    esp_mqtt_client_handle_t client = params->client;
 
-    while (1) {
-        if (pub_enabled) { // Publicar datos solo si está habilitado
-            char* data = random_values();
-            esp_mqtt_client_publish(client, "/EDIFICIO_3/P_4/N/12/Data", data, 0, 1, 0);
-            ESP_LOGI(TAG, "Publicado: %s", data);
-        }
-        vTaskDelay(params->interval / portTICK_PERIOD_MS);
+    while (pub_enabled) {
+        char* data = "{\"data\": \"hola\"}";
+        esp_mqtt_client_publish(client, topic_data, data, strlen(data), QoS, 0);
+        ESP_LOGI(TAG, "Publicado: %s", data);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 
 }
@@ -89,27 +89,28 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
+    const char prov_msg[] = "{\"provisionDeviceKey\": \"huxcz6wakl41mlkv2zzq\", \"provisionDeviceSecret\": \"e8i77gmt00x8313coc9e\", \"deviceName\": \"ESP_EF\"}";
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        msg_id = esp_mqtt_client_publish(client, "/provision/request", prov_msg, strlen(prov_msg), QoS, 0);
+        ESP_LOGI(TAG, "sent provision publish successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+        msg_id = esp_mqtt_client_subscribe(client, "/provision/response", 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
         /* Lógica de control de Edificio*/
 
         //Intervalo de tiempo
-        msg_id = esp_mqtt_client_subscribe(client, "/EDIFICIO_3/P_4/N/12/interval", 0);
+        msg_id = esp_mqtt_client_subscribe(client, topic_data, 0);
         ESP_LOGI(TAG, "sent subscribe successful intervalo, msg_id=%d", msg_id);
 
           //Enable
-        msg_id = esp_mqtt_client_subscribe(client, "/EDIFICIO_3/P_4/N/12/enable", 0);
+        msg_id = esp_mqtt_client_subscribe(client, topic_enable, 0);
         ESP_LOGI(TAG, "sent subscribe successful enable, msg_id=%d", msg_id);
 
           //Disable
-        msg_id = esp_mqtt_client_subscribe(client, "/EDIFICIO_3/P_4/N/12/disable", 0);
+        msg_id = esp_mqtt_client_subscribe(client, topic_disable, 0);
         ESP_LOGI(TAG, "sent subscribe successful disable, msg_id=%d", msg_id);
 
         /* Lógica de control de Edificio*/
@@ -125,7 +126,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 1, 0);
+        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, QoS, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
@@ -141,17 +142,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         printf("DATA=%.*s\r\n", event->data_len, event->data);
 
         // Controlar intervalo de publicación
-        if (strncmp(event->topic, "/EDIFICIO_3/P_4/N/12/interval", event->topic_len) == 0) {
+        if (strncmp(event->topic, topic_data, event->topic_len) == 0) {
             interval = atoi(event->data);
             ESP_LOGI(TAG, "Intervalo actualizado a %d ms", interval);
         }
         // Habilitar sensor
-        else if (strncmp(event->topic, "/EDIFICIO_3/P_4/N/12/enable", event->topic_len) == 0) {
+        else if (strncmp(event->topic, topic_enable, event->topic_len) == 0) {
             pub_enabled = true;
             ESP_LOGI(TAG, "Sensor habilitado");
         }
         // Deshabilitar sensor
-        else if (strncmp(event->topic, "/EDIFICIO_3/P_4/N/12/disable", event->topic_len) == 0) {
+        else if (strncmp(event->topic, topic_disable, event->topic_len) == 0) {
             pub_enabled = false;
             ESP_LOGI(TAG, "Sensor deshabilitado");
             }
@@ -180,6 +181,9 @@ static void mqtt_app_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_BROKER_URL,
+        .credentials.client_id = "co2",
+        .credentials.username = "senslab",
+        .credentials.authentication.password = "senslabMIOT",
     };
 #if CONFIG_BROKER_URL_FROM_STDIN
     char line[128];
@@ -219,35 +223,4 @@ static void mqtt_app_start(void)
 
        // Tarea para publicar datos
         xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
-}
-
-
-
-
-void app_main(void)
-{
-    ESP_LOGI(TAG, "[APP] Startup..");
-    ESP_LOGI(TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
-
-    esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-    esp_log_level_set("mqtt_example", ESP_LOG_VERBOSE);
-    esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
-    esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-    esp_log_level_set("transport", ESP_LOG_VERBOSE);
-    esp_log_level_set("outbox", ESP_LOG_VERBOSE);
-
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * examples/protocols/README.md for more information about this function.
-     */
-    ESP_ERROR_CHECK(example_connect());
-
-
-    mqtt_app_start();
 }
