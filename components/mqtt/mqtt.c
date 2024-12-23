@@ -57,7 +57,7 @@ void pub_task(void *param){
     esp_mqtt_client_handle_t client = params->client;
 
     while (pub_enabled) {
-        char* data = "{\"data\": \"hola\"}";
+        char *data = "{\"data\": \"hola\"}";
         esp_mqtt_client_publish(client, topic_data, data, strlen(data), QoS, 0);
         ESP_LOGI(TAG, "Publicado: %s", data);
         vTaskDelay(10000 / portTICK_PERIOD_MS);
