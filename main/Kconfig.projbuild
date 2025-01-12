@@ -11,6 +11,12 @@ menu "Example Configuration"
         config BROKER_URL_FROM_STDIN
             bool
             default y if BROKER_URL = "FROM_STDIN"
+
+        config SEND_INTERVAL
+            int 
+            default 1000
+            help 
+                Time in ms to publish sensor data
     endmenu
     
     menu "Wifi cofiguration"

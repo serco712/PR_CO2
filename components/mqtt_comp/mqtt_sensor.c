@@ -11,30 +11,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "esp_wifi.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
-#include "esp_event.h"
-#include "esp_netif.h"
-#include "protocol_examples_common.h"
-
+#include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-
-#include "lwip/sockets.h"
-#include "lwip/dns.h"
-#include "lwip/netdb.h"
-
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "esp_random.h"
-#include "esp_mac.h"
-
-
-//variables globales
-int interval = 1000; // Periodo de publicación
+#include "mqtt5_client.h"
+#include "mqtt_sensor.h"
+ 
+static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
 
 static const char *TAG = "mqtt_example";
@@ -42,10 +26,14 @@ const char *topic_data = "Informatica/3/Lab/CO2/data";
 const char *topic_enable = "Informatica/3/Lab/CO2/enable";
 const char *topic_disable = "Informatica/3/Lab/CO2/disable";
 int QoS = 1;
+const char prov_msg[] = "{\"provisionDeviceKey\": \"huxcz6wakl41mlkv2zzq\", \"provisionDeviceSecret\": \"e8i77gmt00x8313coc9e\", \"deviceName\": \"ESP_EF\"}";
+const char *provision_topic_request = "/provision/request";
+const char *provision_topic_response = "/provision/response";
+bool provisionado = false;
 
 typedef struct {
     esp_mqtt_client_handle_t client;
-    int interval;
+    int pub_interval;
 } pub_task_params_t;
 
 
@@ -60,17 +48,9 @@ void pub_task(void *param){
         char *data = "{\"data\": \"hola\"}";
         esp_mqtt_client_publish(client, topic_data, data, strlen(data), QoS, 0);
         ESP_LOGI(TAG, "Publicado: %s", data);
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        vTaskDelay(params -> pub_interval / portTICK_PERIOD_MS);
     }
 
-}
-
-
-static void log_error_if_nonzero(const char *message, int error_code)
-{
-    if (error_code != 0) {
-        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
-    }
 }
 
 /*
@@ -89,15 +69,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
-    const char prov_msg[] = "{\"provisionDeviceKey\": \"huxcz6wakl41mlkv2zzq\", \"provisionDeviceSecret\": \"e8i77gmt00x8313coc9e\", \"deviceName\": \"ESP_EF\"}";
+    
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/provision/request", prov_msg, strlen(prov_msg), QoS, 0);
+        msg_id = esp_mqtt_client_subscribe(client, provision_topic_response, 0);
+        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+
+        msg_id = esp_mqtt_client_publish(client, provision_topic_request, prov_msg, strlen(prov_msg), QoS, 0);
         ESP_LOGI(TAG, "sent provision publish successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/provision/response", 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        
 
         /* Lógica de control de Edificio*/
 
@@ -135,6 +117,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_PUBLISHED:
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
+    
     case MQTT_EVENT_DATA:
 
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
@@ -143,8 +126,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
         // Controlar intervalo de publicación
         if (strncmp(event->topic, topic_data, event->topic_len) == 0) {
-            interval = atoi(event->data);
-            ESP_LOGI(TAG, "Intervalo actualizado a %d ms", interval);
+            pub_interval = atoi(event->data);
+            ESP_LOGI(TAG, "Intervalo actualizado a %d ms", pub_interval);
         }
         // Habilitar sensor
         else if (strncmp(event->topic, topic_enable, event->topic_len) == 0) {
@@ -183,33 +166,8 @@ static void mqtt_app_start(void)
         .broker.address.uri = CONFIG_BROKER_URL,
         .credentials.client_id = "co2",
         .credentials.username = "senslab",
-        .credentials.authentication.password = "senslabMIOT",
+        .credentials.authentication.password = "senslabMIOT",       //cambiar a CONFIG_MQTT_PSSWD
     };
-#if CONFIG_BROKER_URL_FROM_STDIN
-    char line[128];
-
-    if (strcmp(mqtt_cfg.broker.address.uri, "FROM_STDIN") == 0) {
-        int count = 0;
-        printf("Please enter url of mqtt broker\n");
-        while (count < 128) {
-            int c = fgetc(stdin);
-            if (c == '\n') {
-                line[count] = '\0';
-                break;
-            } else if (c > 0 && c < 127) {
-                line[count] = c;
-                ++count;
-            }
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        mqtt_cfg.broker.address.uri = line;
-        printf("Broker url: %s\n", line);
-    } else {
-        ESP_LOGE(TAG, "Configuration mismatch: wrong broker url");
-        abort();
-    }
-#endif /* CONFIG_BROKER_URL_FROM_STDIN */
-
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
@@ -219,8 +177,20 @@ static void mqtt_app_start(void)
     // Estructura con los parámetros de la función pusb_Task
     pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
     params->client = client;
-    params->interval = interval; // Asignar el valor inicial de intervalo
+    params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
 
-       // Tarea para publicar datos
-        xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
+    // Tarea para publicar datos
+    xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
 }
+
+void mqtt_sensor_enable() {
+    pub_enabled = true;
+    ESP_LOGI(TAG, "Publicación habilitada");
+}
+
+void mqtt_sensor_disable() {
+    pub_enabled = false;
+    ESP_LOGI(TAG, "Publicación deshabilitada");
+}
+
+

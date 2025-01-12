@@ -3,7 +3,13 @@
     "idf.espIdfPath": "/home/javier/esp/v5.3.1/esp-idf",
     "idf.toolsPath": "/home/javier/.espressif",
     "idf.openOcdConfigs": [
+<<<<<<< Updated upstream
         "interface/ftdi/esp32_devkitj_v1.cfg",
         "target/esp32.cfg"
     ]
+=======
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.flashType": "UART"
+>>>>>>> Stashed changes
 }
