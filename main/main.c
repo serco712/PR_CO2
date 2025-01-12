@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
-=======
 #include <stdio.h>
->>>>>>> Stashed changes
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -83,8 +80,5 @@ void app_main(void)
 
     // Probar funcionalidad MQTT
     test_mqtt_functionality();
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
 }
