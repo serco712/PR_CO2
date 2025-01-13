@@ -240,7 +240,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
 
-        msg_id = esp_mqtt_client_publish(client, PROVISION_REQUEST_TOPIC, prov_msg, strlen(prov_msg), QoS, 0);
+        //msg_id = esp_mqtt_client_publish(client, PROVISION_REQUEST_TOPIC, prov_msg, strlen(prov_msg), QoS, 0);
         ESP_LOGI(TAG, "sent provision publish successful, msg_id=%d", msg_id);
 
         
