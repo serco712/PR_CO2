@@ -11,15 +11,33 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
-#include "sdkconfig.h"
+#include "esp_wifi.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+#include "esp_timer.h"
+
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
+
+#include "lwip/sockets.h"
+#include "lwip/dns.h"
+#include "lwip/netdb.h"
+
+#include "mqtt_sensor.h"
+
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "mqtt5_client.h"
-#include "mqtt_sensor.h"
- 
+#include "cJSON.h"
+
 static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
+
+static const char *provision_device_key = "ja47czbn3npxz0tn8hal";   
+static const char *provision_device_secret = "exmrrodm40frz7wjje3d";
 
 static const char *TAG = "mqtt_example";
 const char *topic_data = "Informatica/3/Lab/CO2/data";
@@ -27,22 +45,99 @@ const char *topic_enable = "Informatica/3/Lab/CO2/enable";
 const char *topic_disable = "Informatica/3/Lab/CO2/disable";
 int QoS = 1;
 const char prov_msg[] = "{\"provisionDeviceKey\": \"huxcz6wakl41mlkv2zzq\", \"provisionDeviceSecret\": \"e8i77gmt00x8313coc9e\", \"deviceName\": \"ESP_EF\"}";
-const char *provision_topic_request = "/provision/request";
-const char *provision_topic_response = "/provision/response";
+const char *PROVISION_REQUEST_TOPIC = "/provision/request";
+const char *PROVISION_RESPONSE_TOPIC = "/provision/response";
 bool provisionado = false;
+
+char provisioned_client_username[64] = {0}; 
 
 typedef struct {
     esp_mqtt_client_handle_t client;
     int pub_interval;
 } pub_task_params_t;
 
+esp_mqtt_client_handle_t client;
 
 //Función que llama la tarea para publicar los valores aleatoriamente
+
+void save_credentials(const char *credentials)
+{
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err == ESP_OK)
+    {
+        nvs_set_str(nvs_handle, "credentials", credentials);
+        nvs_commit(nvs_handle);
+        nvs_close(nvs_handle);
+        ESP_LOGI(TAG, "Credentials saved to NVS");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to open NVS");
+    }
+}
+
+
+char *load_credentials()
+{
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to open NVS");
+        return NULL;
+    }
+
+    size_t required_size = 0;
+    nvs_get_str(nvs_handle, "credentials", NULL, &required_size);
+    if (required_size == 0)
+    {
+        ESP_LOGE(TAG, "No credentials saved");
+        nvs_close(nvs_handle);
+        return NULL;
+    }
+
+    char *credentials = malloc(required_size);
+    nvs_get_str(nvs_handle, "credentials", credentials, &required_size);
+    nvs_close(nvs_handle);
+    return credentials;
+}
+
+
+void send_provision_request()
+{
+    cJSON *root = cJSON_CreateObject();
+    //cJSON_AddStringToObject(root, "deviceName", "");
+    cJSON_AddStringToObject(root, "provisionDeviceKey", provision_device_key);
+    cJSON_AddStringToObject(root, "provisionDeviceSecret", provision_device_secret);
+
+    char *json_data = cJSON_Print(root);
+    if (json_data)
+    {
+        esp_mqtt_client_publish(client, PROVISION_REQUEST_TOPIC, json_data, 0, 1, 0);
+        ESP_LOGI(TAG, "Sent provisioning request: %s", json_data);
+        free(json_data);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to create JSON data");
+    }
+
+    cJSON_Delete(root);
+}
+//
+
+// Error logging function
+static void log_error_if_nonzero(const char *message, int error_code) {
+    if (error_code != 0) {
+        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
+    }
+}
 
 void pub_task(void *param){
 
     pub_task_params_t *params = (pub_task_params_t *) param;
-    esp_mqtt_client_handle_t client = params->client;
+    client = params->client;
 
     while (pub_enabled) {
         char *data = "{\"data\": \"hola\"}";
@@ -52,6 +147,77 @@ void pub_task(void *param){
     }
 
 }
+
+static void mqtt_event_handler_not_prov(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
+    esp_mqtt_event_handle_t event = event_data;
+    client = event->client;
+
+    switch (event->event_id) {
+        case MQTT_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "Conectado al broker MQTT");
+            esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
+            break;
+
+        case MQTT_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "Desconectado del broker MQTT");
+            reconnect_mqtt();
+            break;
+
+        case MQTT_EVENT_DATA:
+            ESP_LOGI(TAG, "MQTT data received on topic %.*s: %.*s", event->topic_len, event->topic, event->data_len, event->data);
+            if (strncmp(event->topic, PROVISION_RESPONSE_TOPIC, event->topic_len) == 0)
+            {
+                cJSON *response = cJSON_Parse(event->data);
+                if (response)
+                {
+                    const cJSON *status = cJSON_GetObjectItem(response, "status");
+                    if (status && strcmp(status->valuestring, "SUCCESS") == 0)
+                    {
+                        const cJSON *credentials = cJSON_GetObjectItem(response, "credentialsValue");
+                        if (credentials)
+                        {
+                            save_credentials(credentials->valuestring);
+                            ESP_LOGI(TAG, "Provisioning successful, credentials saved: %s", credentials->valuestring);
+                            strcpy(provisioned_client_username, credentials->valuestring);
+                            esp_mqtt_client_disconnect(client);
+                            //reconnect_mqtt();
+                        }
+                    }
+                    else
+                    {
+                        ESP_LOGE(TAG, "Provisioning failed: %s", cJSON_GetObjectItem(response, "errorMsg")->valuestring);
+                    }
+                    cJSON_Delete(response);
+                }
+            }
+            break;
+
+        case MQTT_EVENT_SUBSCRIBED:
+            ESP_LOGI(TAG, "Suscrito");
+            send_provision_request();
+            break;
+
+        case MQTT_EVENT_ERROR:
+            ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+            if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+                log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
+                log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
+                log_error_if_nonzero("captured as transport's socket errno",  event->error_handle->esp_transport_sock_errno);
+                ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+
+            }
+            break;
+
+        default:
+            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            ESP_LOGI(TAG, "MQTT data received on topic %.*s: %.*s", event->topic_len, event->topic, event->data_len, event->data);
+            //ESP_LOGI(TAG, "Other event=%s", cJSON_Print(response));
+            break;
+    }
+}
+
 
 /*
  * @brief Event handler registered to receive MQTT events
@@ -63,20 +229,18 @@ void pub_task(void *param){
  * @param event_id The id for the received event.
  * @param event_data The data for the event, esp_mqtt_event_handle_t.
  */
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
+    client = event->client;
+    int msg_id, response_id;
     
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_subscribe(client, provision_topic_response, 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_publish(client, provision_topic_request, prov_msg, strlen(prov_msg), QoS, 0);
+        msg_id = esp_mqtt_client_publish(client, PROVISION_REQUEST_TOPIC, prov_msg, strlen(prov_msg), QoS, 0);
         ESP_LOGI(TAG, "sent provision publish successful, msg_id=%d", msg_id);
 
         
@@ -158,19 +322,37 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 
+void reconnect_mqtt() {
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .broker.address.uri = CONFIG_BROKER_URL,
+        .credentials.username = provisioned_client_username,
+        .credentials.client_id = ""
+    };
+
+    client = esp_mqtt_client_init(&mqtt_cfg);
+    if (!client) {
+        ESP_LOGE(TAG, "Failed to initialize MQTT client");
+        return;
+    }
+
+    // Registrar el manejador de eventos
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_prov, NULL);
+    // Iniciar el cliente MQTT
+    esp_mqtt_client_start(client);
+}
 
 
-static void mqtt_app_start(void)
+
+void mqtt_app_start()
 {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_BROKER_URL,
-        .credentials.client_id = "co2",
-        .credentials.username = "senslab",
-        .credentials.authentication.password = "senslabMIOT",       //cambiar a CONFIG_MQTT_PSSWD
+        .credentials.client_id = "",
+        .credentials.username = "provision"
     };
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov, NULL);
     esp_mqtt_client_start(client);
 
 

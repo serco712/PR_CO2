@@ -33,8 +33,10 @@ void mqtt_sensor_disable();
 
 void pub_task();
 
-static void mqtt_app_start();
+void mqtt_app_start();
 
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+//static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+
+void reconnect_mqtt();
 
 #endif // MQTT_SENSOR_H
