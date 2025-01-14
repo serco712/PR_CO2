@@ -36,8 +36,8 @@
 static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
 
-static const char *provision_device_key = "ja47czbn3npxz0tn8hal";   
-static const char *provision_device_secret = "exmrrodm40frz7wjje3d";
+static char *provision_device_key;   
+static char *provision_device_secret;
 
 static const char *TAG = "mqtt_example";
 const char *topic_data = "Informatica/3/Lab/CO2/data";
@@ -364,7 +364,7 @@ void reconnect_mqtt_prov() {
 
 
 
-void mqtt_app_start()
+void mqtt_app_start_prov()
 {
     char *credentials;
     if ((credentials = load_credentials()) != NULL) {
@@ -388,6 +388,40 @@ void mqtt_app_start()
         params->client = client;
         params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
     }
+    // Tarea para publicar datos
+    //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
+}
+
+void mqtt_app_start_not_prov(char *json_data)
+{
+    cJSON *data = cJSON_Parse(json_data);
+
+    const cJSON *uri = cJSON_GetObjectItem(data, "URI");
+    const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
+    const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+
+
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .broker.address.uri = uri->valuestring,
+        .credentials.client_id = "",
+        .credentials.username = "provision"
+    };
+
+    provision_device_key = key->valuestring;
+    provision_device_secret = key->valuestring;
+
+    client = esp_mqtt_client_init(&mqtt_cfg);
+    /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
+    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov, NULL);
+
+    esp_mqtt_client_start(client);
+
+
+    // Estructura con los parámetros de la función pusb_Task
+    pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
+    params->client = client;
+    params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
+
     // Tarea para publicar datos
     //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
 }
