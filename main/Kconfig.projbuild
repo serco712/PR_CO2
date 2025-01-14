@@ -83,12 +83,6 @@ menu "Example Configuration"
                 are misconfigured. Provisioned credentials are erased and internal state machine
                 is reset after this threshold is reached.
     
-        config EXAMPLE_PROV_SHOW_QR
-            bool "Show provisioning QR code"
-            default y
-            help
-                Show the QR code for provisioning.
-    
         config EXAMPLE_PROV_USING_BLUEDROID
             bool
             depends on (BT_BLUEDROID_ENABLED && (IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32S3))

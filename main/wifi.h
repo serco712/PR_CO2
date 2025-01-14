@@ -1,6 +1,7 @@
-// #ifndef WIFI_H
-// #define WIFI_H
+#ifndef WIFI_H
+#define WIFI_H
 
-// void main_wifi();
+char* get_thingsboard_json();
+void main_wifi();
 
-// #endif // MQTT_SENSOR_H
+#endif // MQTT_SENSOR_H
