@@ -324,27 +324,20 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
 
 void reconnect_mqtt_not_prov() {
     esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov);
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_BROKER_URL,
-        .credentials.username = provisioned_client_username,
-        .credentials.client_id = ""
-    };
-
-    client = esp_mqtt_client_init(&mqtt_cfg);
-    if (!client) {
-        ESP_LOGE(TAG, "Failed to initialize MQTT client");
-        return;
-    }
-
-    // Registrar el manejador de eventos
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_prov, NULL);
-    // Iniciar el cliente MQTT
-    esp_mqtt_client_start(client);
+    reconnect_mqtt_prov();
 }
 
 void reconnect_mqtt_prov() {
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
+    size_t required_size = 0;
+    nvs_get_str(nvs_handle, "URI", NULL, &required_size);
+
+    char *uri = malloc(required_size);
+    nvs_get_str(nvs_handle, "credentials", uri, &required_size);
+    nvs_close(nvs_handle);
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_BROKER_URL,
+        .broker.address.uri = uri,
         .credentials.username = provisioned_client_username,
         .credentials.client_id = ""
     };
@@ -371,23 +364,6 @@ void mqtt_app_start_prov()
         strcpy(provisioned_client_username, credentials);
         reconnect_mqtt_prov();
     }
-    else {
-        esp_mqtt_client_config_t mqtt_cfg = {
-            .broker.address.uri = CONFIG_BROKER_URL,
-            .credentials.client_id = "",
-            .credentials.username = "provision"
-        };
-        client = esp_mqtt_client_init(&mqtt_cfg);
-        /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-        esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov, NULL);
-        esp_mqtt_client_start(client);
-
-
-        // Estructura con los parámetros de la función pusb_Task
-        pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
-        params->client = client;
-        params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
-    }
     // Tarea para publicar datos
     //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
 }
@@ -400,6 +376,22 @@ void mqtt_app_start_not_prov(char *json_data)
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
 
+
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err == ESP_OK)
+    {
+        nvs_set_str(nvs_handle, "URI", uri->valuestring);
+        nvs_set_str(nvs_handle, "deviceKey", key->valuestring);
+        nvs_set_str(nvs_handle, "deviceSecret", secret->valuestring);
+        nvs_commit(nvs_handle);
+        nvs_close(nvs_handle);
+        ESP_LOGI(TAG, "Credentials saved to NVS");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to open NVS");
+    }
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri->valuestring,
