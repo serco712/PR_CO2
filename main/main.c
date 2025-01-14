@@ -89,7 +89,7 @@ void app_main(void)
 
     //1-  Inicializar MQTT
     ESP_LOGI(TAG, "Iniciando MQTT...");
-    mqtt_app_start();
+    mqtt_app_start_not_prov(get_thingsboard_json());
     ESP_LOGI(TAG, "MQTT inicializado.");
 
     // Esperar a que MQTT se conecte

@@ -33,7 +33,9 @@ void mqtt_sensor_disable();
 
 void pub_task();
 
-void mqtt_app_start();
+void mqtt_app_start_not_prov(char *json_data);
+
+void mqtt_app_start_prov();
 
 //static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
