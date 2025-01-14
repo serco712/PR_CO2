@@ -136,7 +136,7 @@ int sgp30_init(sgp30_t *const me, void *i2c_handle, uint8_t dev_addr)
 
 	sgp30_reg_write(SGP30_CMD_IAQ_INIT, &me->i2c_dev);
 
-	delay_ms(15000);
+	//delay_ms(15000);
 
 	// sgp30_reg_write(SGP30_CMD_IAQ_INIT, &me->i2c_dev);
 	// printf("b");
