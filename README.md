@@ -10,9 +10,13 @@ that copies the project to user specified path and set it's name. For more infor
 
 
 
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
+## Como hacer el provisionamiento wifi
+
+Nos dirigimos al directorio esp-idf/tools/esp_prov
+Creamos un entorno virtual con el comando source .venv/bin/activate
+Hacemos un export IDF_PATH e instalamos las dependencias que marca el README.md
+Una vez que la placa este lista para ser provisionada nos conectamos al wifi de la placa y ejecutamos el comando 
+python3 esp_prov.py --transport softap --sec2_username wifiprov --sec2_pwd abcd1234 --ssid MIOT --sec_ver 2 --custom_data "{\"URI\":\"Hola\",\"secret\":\"adios\",\"key\":\"a\"}"
 
 ## Example folder contents
 
