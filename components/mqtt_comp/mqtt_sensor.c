@@ -408,7 +408,7 @@ void mqtt_app_start_not_prov(char *json_data)
     };
 
     provision_device_key = key->valuestring;
-    provision_device_secret = key->valuestring;
+    provision_device_secret = secret->valuestring;
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
