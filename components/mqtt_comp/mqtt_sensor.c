@@ -146,6 +146,7 @@ static void mqtt_event_handler_not_prov(void *handler_args, esp_event_base_t bas
                     const cJSON *status = cJSON_GetObjectItem(response, "status");
                     if (status && strcmp(status->valuestring, "SUCCESS") == 0)
                     {
+                        ESP_LOGI(TAG, "Provisioning successful, status saved: %s", status->valuestring);
                         const cJSON *credentials = cJSON_GetObjectItem(response, "credentialsValue");
                         if (credentials)
                         {
@@ -307,6 +308,8 @@ void reconnect_mqtt_prov() {
     char *uri = malloc(required_size);
     nvs_get_str(nvs_handle, "URI", uri, &required_size);
     nvs_get_str(nvs_handle, "credentials", provisioned_client_username, &required_size);
+    ESP_LOGI(TAG, "URI=%s", uri);
+    ESP_LOGI(TAG, "access token=%s", provisioned_client_username);
     nvs_close(nvs_handle);
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
@@ -332,6 +335,9 @@ void mqtt_app_start_not_prov(cJSON *data)
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+    ESP_LOGI(TAG, "URI=%s", uri->valuestring);
+    ESP_LOGI(TAG, "key=%s", key->valuestring);
+    ESP_LOGI(TAG, "secret=%s", secret->valuestring);
 
 
     nvs_handle_t nvs_handle;
@@ -366,19 +372,20 @@ void mqtt_app_start_not_prov(cJSON *data)
     esp_mqtt_client_start(client);
 
 
-    // Estructura con los parámetros de la función pusb_Task
-    pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
-    params->client = client;
-    params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
+    // // Estructura con los parámetros de la función pusb_Task
+    // pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
+    // params->client = client;
+    // params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
 
     // Tarea para publicar datos
     //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
 }
 
 void mqtt_app_start(char *json_data) {
+     ESP_LOGI(TAG, "json data=%s", json_data);
     cJSON *data = cJSON_Parse(json_data);
     if (data)
-        mqtt_app_start_not_prov(data);
+       mqtt_app_start_not_prov(data);
     else
         reconnect_mqtt_prov();
 }
