@@ -198,6 +198,23 @@ static void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
 }
+////////////////////////////////////////////////////////////////////////////////////
+wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_ESP_WIFI_SSID,
+            .password = EXAMPLE_ESP_WIFI_PASS,
+            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+
+            .pmf_cfg = {
+                .capable = true,
+                .required = false
+            },
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+////////////////////////////////////////////////////////////////////////////////////    
+
 
 static void get_device_service_name(char *service_name, size_t max)
 {
@@ -262,12 +279,14 @@ void main_wifi(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
+/////////////////////////////////////////////////////////////////////////////////////////
     /* Initialize Wi-Fi including netif with default config */
     esp_netif_create_default_wifi_sta();
     /* Inicializa softAP */
     esp_netif_create_default_wifi_ap();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+////////////////////////////////////////////////////////////////////////////////////////    
 
     /* Configuration for the provisioning manager */
     wifi_prov_mgr_config_t config = {
