@@ -2,6 +2,7 @@
 #define MQTT_SENSOR_H
 
 #include "mqtt_client.h"
+#include "cJSON.h"
 
 /**
  * @brief Inicializa el cliente MQTT.
@@ -33,7 +34,9 @@ void mqtt_sensor_disable();
 
 void pub_task();
 
-void mqtt_app_start_not_prov(char *json_data);
+void mqtt_app_start(char *json_data);
+
+void mqtt_app_start_not_prov(cJSON *data);
 
 void mqtt_app_start_prov();
 

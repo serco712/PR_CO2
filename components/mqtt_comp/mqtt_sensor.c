@@ -31,7 +31,6 @@
 
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "cJSON.h"
 
 static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
@@ -75,33 +74,6 @@ void save_credentials(const char *credentials)
         ESP_LOGE(TAG, "Failed to open NVS");
     }
 }
-
-
-char *load_credentials()
-{
-    nvs_handle_t nvs_handle;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to open NVS");
-        return NULL;
-    }
-
-    size_t required_size = 0;
-    nvs_get_str(nvs_handle, "credentials", NULL, &required_size);
-    if (required_size == 0)
-    {
-        ESP_LOGE(TAG, "No credentials saved");
-        nvs_close(nvs_handle);
-        return NULL;
-    }
-
-    char *credentials = malloc(required_size);
-    nvs_get_str(nvs_handle, "credentials", credentials, &required_size);
-    nvs_close(nvs_handle);
-    return credentials;
-}
-
 
 void send_provision_request()
 {
@@ -332,9 +304,9 @@ void reconnect_mqtt_prov() {
     esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
     size_t required_size = 0;
     nvs_get_str(nvs_handle, "URI", NULL, &required_size);
-
     char *uri = malloc(required_size);
-    nvs_get_str(nvs_handle, "credentials", uri, &required_size);
+    nvs_get_str(nvs_handle, "URI", uri, &required_size);
+    nvs_get_str(nvs_handle, "credentials", provisioned_client_username, &required_size);
     nvs_close(nvs_handle);
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
@@ -355,23 +327,8 @@ void reconnect_mqtt_prov() {
 }
 
 
-
-
-void mqtt_app_start_prov()
+void mqtt_app_start_not_prov(cJSON *data)
 {
-    char *credentials;
-    if ((credentials = load_credentials()) != NULL) {
-        strcpy(provisioned_client_username, credentials);
-        reconnect_mqtt_prov();
-    }
-    // Tarea para publicar datos
-    //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
-}
-
-void mqtt_app_start_not_prov(char *json_data)
-{
-    cJSON *data = cJSON_Parse(json_data);
-
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
@@ -416,6 +373,14 @@ void mqtt_app_start_not_prov(char *json_data)
 
     // Tarea para publicar datos
     //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
+}
+
+void mqtt_app_start(char *json_data) {
+    cJSON *data = cJSON_Parse(json_data);
+    if (data)
+        mqtt_app_start_not_prov(data);
+    else
+        reconnect_mqtt_prov();
 }
 
 void mqtt_sensor_enable() {
