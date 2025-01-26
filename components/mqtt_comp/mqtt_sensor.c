@@ -33,7 +33,7 @@
 #include "mqtt_client.h"
 
 const char *BROKER_URL = CONFIG_BROKER_URL;
-const int MQTT_PORT= CONFIG_MQTT_PORT;
+const int port = CONFIG_MQTT_PORT;
 const char *USERNAME = CONFIG_USERNAME ;
 const char *CLIENT_ID = CONFIG_CLIENT_ID;
 const char *provision_device_key = CONFIG_PROVISION_DEVICE_KEY;
@@ -287,7 +287,10 @@ void reconnect_mqtt_prov() {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
         .credentials.username = provisioned_client_username,
-        .credentials.client_id = ""
+        .credentials.client_id = CLIENT_ID,
+        .broker.address.port = port,
+        .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,   
+        .broker.verification.skip_cert_common_name_check = false,
     };
 
     client = esp_mqtt_client_init(&mqtt_cfg);
@@ -331,8 +334,11 @@ void mqtt_app_start_not_prov(cJSON *data)
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri->valuestring,
-        .credentials.client_id = "",
-        .credentials.username = "provision"
+        .credentials.client_id = CLIENT_ID,
+        .credentials.username = "provision",
+        .broker.address.port = port,
+        .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,   
+        .broker.verification.skip_cert_common_name_check = false,
     };
 
     provision_device_key = key->valuestring;
