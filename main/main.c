@@ -12,7 +12,8 @@
 #include "esp_log.h"
 #include "mqtt_sensor.h"
 #include "wifi.h"
-
+#include "include/sgp30.h"
+#include "mqtt_client.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
@@ -43,15 +44,40 @@ data = "hola";
 len = sizeof(data);
 
 // }
+
+static void periodic_timer_callback(void* arg);
+
+void init_i2c(void) {
+    i2c_master_bus_config_t i2c_bus_config = {
+            .clk_source = I2C_CLK_SRC_DEFAULT,
+            .i2c_port = I2C_NUM_0,
+            .scl_io_num = 22,
+            .sda_io_num = 21,
+            .glitch_ignore_cnt = 7,
+            .flags.enable_internal_pullup = true,
+        };
+    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_config, &bus_handle));
+    sgp30_init(&aqSensor, bus_handle, SGP30_I2C_ADDR);
+}
+
+
 void app_main(void)
 {
 //Primero comprobamos si venimos de una OTA
+    init_i2c();
+    const esp_timer_create_args_t periodic_timer_args = {
+        .callback = &periodic_timer_callback,
+        /* name is optional, but may help identify the timer when debugging */
+        .name = "periodic"
+    };
 
+    esp_timer_handle_t periodic_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
 
-//Comprobamos si estamos provisionados
-
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
+    //Comprobamos si estamos provisionados
     int msg_id;
-    //main_wifi();
+    main_wifi();
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
 
@@ -73,4 +99,27 @@ void app_main(void)
     msg_id = esp_mqtt_client_subscribe(client, topic_attributes, QoS);
     esp_mqtt_client_publish(client, topic_data, data, len, QoS);
 
+}
+
+static void periodic_timer_callback(void* arg)
+{
+    sgp30_get_co2_and_tvoc(&aqSensor, &co2, &tvoc);
+    cJSON *root = cJSON_CreateObject();
+    //cJSON_AddStringToObject(root, "deviceName", "");
+    cJSON_AddNumberToObject(root, "co2", co2);
+    cJSON_AddNumberToObject(root, "tvoc", tvoc);
+
+    char *json_data = cJSON_Print(root);
+    if (json_data)
+    {
+        esp_mqtt_client_publish(client, "v1/devices/me/telemetry", json_data, 0, 1, 0);
+        ESP_LOGI(TAG, "Sent provisioning request: %s", json_data);
+        free(json_data);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Failed to create JSON data");
+    }
+
+    cJSON_Delete(root);
 }

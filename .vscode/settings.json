@@ -1,16 +1,3 @@
 {
-    "idf.port": "/dev/ttyUSB0",
-    "files.associations": {
-        "mqtt5_client.h": "c",
-        "mqtt_client.h": "c",
-        "esp_wifi.h": "c",
-        "mqtt_sensor.h": "c",
-        "sdkconfig.h": "c"
-    },
-    "idf.flashType": "UART",
-    "idf.openOcdConfigs": [
-        "interface/ftdi/esp32_devkitj_v1.cfg",
-        "target/esp32.cfg"
-    ],
-    "idf.portWin": "COM6"
+    "idf.port": "/dev/ttyUSB0"
 }

@@ -26,25 +26,15 @@
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
-
+#include "mqtt_client.h"
 #include "mqtt_sensor.h"
 
-#include "esp_log.h"
-#include "mqtt_client.h"
+#define PROVISION_REQUEST_TOPIC "/provision/request"
+#define PROVISION_RESPONSE_TOPIC "/provision/response"
 
-const char *BROKER_URL = CONFIG_BROKER_URL;
-const int MQTT_PORT= CONFIG_MQTT_PORT;
-const char *USERNAME = CONFIG_USERNAME ;
-const char *CLIENT_ID = CONFIG_CLIENT_ID;
-const char *provision_device_key = CONFIG_PROVISION_DEVICE_KEY;
-const char *provision_device_secret = CONFIG_PROVISION_DEVICE_SECRET;
-
-const char *edificio = CONFIG_EDIFICIO;
-const char *piso = CONFIG_PISO;
-const char *aula = CONFIG_AULA;
-const char *medicion = CONFIG_MEDICION;
-const char *tipo_dato = CONFIG_TIPO_DATO;
-
+char *provision_device_key;
+char *provision_device_secret;
+char *device_name;
 static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
 
@@ -52,17 +42,6 @@ bool pub_enabled = true;
 bool provisionado = false;
 
 char provisioned_client_username[64] = {0}; 
-
-typedef struct {
-    esp_mqtt_client_handle_t client;
-    int pub_interval;
-} pub_task_params_t;
-
-static esp_mqtt_client_handle_t client;
-
-esp_mqtt_client_handle_t mqtt_client() {
-    return client;
-}
 
 //Función que llama la tarea para publicar los valores aleatoriamente
 
@@ -86,7 +65,7 @@ void save_credentials(const char *credentials)
 void send_provision_request()
 {
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "deviceName", CLIENT_ID);
+    //cJSON_AddStringToObject(root, "deviceName", device_name);
     cJSON_AddStringToObject(root, "provisionDeviceKey", provision_device_key);
     cJSON_AddStringToObject(root, "provisionDeviceSecret", provision_device_secret);
 
@@ -308,6 +287,7 @@ void mqtt_app_start_not_prov(cJSON *data)
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+
     ESP_LOGI(TAG, "URI=%s", uri->valuestring);
     ESP_LOGI(TAG, "key=%s", key->valuestring);
     ESP_LOGI(TAG, "secret=%s", secret->valuestring);
