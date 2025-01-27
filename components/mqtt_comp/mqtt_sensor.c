@@ -17,7 +17,7 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
-
+#include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -32,19 +32,23 @@
 #include "esp_log.h"
 #include "mqtt_client.h"
 
+const char *BROKER_URL = CONFIG_BROKER_URL;
+const int MQTT_PORT= CONFIG_MQTT_PORT;
+const char *USERNAME = CONFIG_USERNAME ;
+const char *CLIENT_ID = CONFIG_CLIENT_ID;
+const char *provision_device_key = CONFIG_PROVISION_DEVICE_KEY;
+const char *provision_device_secret = CONFIG_PROVISION_DEVICE_SECRET;
+
+const char *edificio = CONFIG_EDIFICIO;
+const char *piso = CONFIG_PISO;
+const char *aula = CONFIG_AULA;
+const char *medicion = CONFIG_MEDICION;
+const char *tipo_dato = CONFIG_TIPO_DATO;
+
 static int pub_interval = CONFIG_SEND_INTERVAL;
 bool pub_enabled = true;
 
-static char *provision_device_key;   
-static char *provision_device_secret;
 
-static const char *TAG = "mqtt_example";
-const char *topic_data = "Informatica/3/Lab/CO2/data";
-const char *topic_enable = "Informatica/3/Lab/CO2/enable";
-const char *topic_disable = "Informatica/3/Lab/CO2/disable";
-int QoS = 1;
-const char *PROVISION_REQUEST_TOPIC = "/provision/request";
-const char *PROVISION_RESPONSE_TOPIC = "/provision/response";
 bool provisionado = false;
 
 char provisioned_client_username[64] = {0}; 
@@ -54,7 +58,11 @@ typedef struct {
     int pub_interval;
 } pub_task_params_t;
 
-esp_mqtt_client_handle_t client;
+static esp_mqtt_client_handle_t client;
+
+esp_mqtt_client_handle_t mqtt_client() {
+    return client;
+}
 
 //Función que llama la tarea para publicar los valores aleatoriamente
 
@@ -78,7 +86,7 @@ void save_credentials(const char *credentials)
 void send_provision_request()
 {
     cJSON *root = cJSON_CreateObject();
-    //cJSON_AddStringToObject(root, "deviceName", "");
+    cJSON_AddStringToObject(root, "deviceName", CLIENT_ID);
     cJSON_AddStringToObject(root, "provisionDeviceKey", provision_device_key);
     cJSON_AddStringToObject(root, "provisionDeviceSecret", provision_device_secret);
 
@@ -190,17 +198,6 @@ static void mqtt_event_handler_not_prov(void *handler_args, esp_event_base_t bas
     }
 }
 
-
-/*
- * @brief Event handler registered to receive MQTT events
- *
- *  This function is called by the MQTT client event loop.
- *
- * @param handler_args user data registered to the event.
- * @param base Event base for the handler(always MQTT Base in this example).
- * @param event_id The id for the received event.
- * @param event_data The data for the event, esp_mqtt_event_handle_t.
- */
 static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
@@ -211,30 +208,6 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-
-        //msg_id = esp_mqtt_client_publish(client, PROVISION_REQUEST_TOPIC, prov_msg, strlen(prov_msg), QoS, 0);
-        //ESP_LOGI(TAG, "sent provision publish successful, msg_id=%d", msg_id);
-
-        
-
-        /* Lógica de control de Edificio*/
-
-        //Intervalo de tiempo
-        // msg_id = esp_mqtt_client_subscribe(client, topic_data, 0);
-        // ESP_LOGI(TAG, "sent subscribe successful intervalo, msg_id=%d", msg_id);
-
-        //   //Enable
-        // msg_id = esp_mqtt_client_subscribe(client, topic_enable, 0);
-        // ESP_LOGI(TAG, "sent subscribe successful enable, msg_id=%d", msg_id);
-
-        //   //Disable
-        // msg_id = esp_mqtt_client_subscribe(client, topic_disable, 0);
-        // ESP_LOGI(TAG, "sent subscribe successful disable, msg_id=%d", msg_id);
-
-        /* Lógica de control de Edificio*/
-
-        //msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        //ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
 
     //case MQTT_EVENT_PUB
@@ -370,15 +343,6 @@ void mqtt_app_start_not_prov(cJSON *data)
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov, NULL);
 
     esp_mqtt_client_start(client);
-
-
-    // // Estructura con los parámetros de la función pusb_Task
-    // pub_task_params_t *params = malloc(sizeof(pub_task_params_t));
-    // params->client = client;
-    // params->pub_interval = pub_interval; // Asignar el valor inicial de intervalo
-
-    // Tarea para publicar datos
-    //xTaskCreate(pub_task, "task_sample", 2048, params, 5, NULL);
 }
 
 void mqtt_app_start(char *json_data) {
