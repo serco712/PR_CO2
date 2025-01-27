@@ -22,6 +22,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "esp_log.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
@@ -32,12 +33,14 @@
 #define PROVISION_REQUEST_TOPIC "/provision/request"
 #define PROVISION_RESPONSE_TOPIC "/provision/response"
 
+static const char *TAG = "mqtt_component";
 char *provision_device_key;
 char *provision_device_secret;
 char *device_name;
 static int pub_interval;
 bool pub_enabled;
 
+static esp_mqtt_client_handle_t client = NULL;
 
 bool provisionado = false;
 
@@ -344,4 +347,7 @@ void mqtt_sensor_disable() {
     ESP_LOGI(TAG, "Publicación deshabilitada");
 }
 
+void send_data(char* data) {
+    esp_mqtt_client_publish(client, "v1/devices/me/telemetry", data, 0, 1, 0);
+}
 

@@ -46,6 +46,6 @@ void reconnect_mqtt_not_prov();
 
 void reconnect_mqtt_prov();
 
-esp_mqtt_client_handle_t mqtt_client() 
+void send_data(char* data);
 
 #endif // MQTT_SENSOR_H

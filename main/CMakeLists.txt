@@ -1,4 +1,4 @@
 idf_component_register(SRCS "wifi.c" "main.c"
                     INCLUDE_DIRS "."
-                    REQUIRES esp_wifi mqtt_comp sgp30 wifi_provisioning esp_timer driver)
+                    REQUIRES mqtt_comp sgp30_comp wifi_provisioning)
 

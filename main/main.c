@@ -16,6 +16,7 @@
 #include "mqtt_client.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
+#include "esp_timer.h"
 
 
 #define EXAMPLE_ESP_WIFI_CHANNEL   1
@@ -29,19 +30,13 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_FAIL_BIT      BIT1
 
 static int s_retry_num = 0;
+static const char *TAG = "main";
 
-static const char *TAG = "mqtt_component";
-static const char *topic_attributes = "v1/devices/me/attributes";
-static const char *topic_data = "v1/devices/me/telemetry";
-/*const char *topic_data = "Informatica/3/Lab/CO2/data";
-const char *topic_enable = "Informatica/3/Lab/CO2/enable";
-const char *topic_disable = "Informatica/3/Lab/CO2/disable";*/
-int QoS = 1;
-const char *PROVISION_REQUEST_TOPIC = "/provision/request";
-const char *PROVISION_RESPONSE_TOPIC = "/provision/response";
+sgp30_t aqSensor;
+i2c_master_bus_handle_t bus_handle;
 
-data = "hola";
-len = sizeof(data);
+
+int tvoc = 5, co2 = 5;
 
 // }
 
@@ -95,10 +90,6 @@ void app_main(void)
 
     // Esperar a que MQTT se conecte
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    client = mqtt_client();
-    msg_id = esp_mqtt_client_subscribe(client, topic_attributes, QoS);
-    esp_mqtt_client_publish(client, topic_data, data, len, QoS);
-
 }
 
 static void periodic_timer_callback(void* arg)
@@ -112,7 +103,7 @@ static void periodic_timer_callback(void* arg)
     char *json_data = cJSON_Print(root);
     if (json_data)
     {
-        esp_mqtt_client_publish(client, "v1/devices/me/telemetry", json_data, 0, 1, 0);
+        send_data(json_data);
         ESP_LOGI(TAG, "Sent provisioning request: %s", json_data);
         free(json_data);
     }
