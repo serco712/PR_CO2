@@ -12,7 +12,7 @@
 #include "esp_log.h"
 #include "mqtt_sensor.h"
 #include "wifi.h"
-#include "include/sgp30.h"
+#include "sgp30.h"
 #include "mqtt_client.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"

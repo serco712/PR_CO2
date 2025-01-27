@@ -35,8 +35,8 @@
 char *provision_device_key;
 char *provision_device_secret;
 char *device_name;
-static int pub_interval = CONFIG_SEND_INTERVAL;
-bool pub_enabled = true;
+static int pub_interval;
+bool pub_enabled;
 
 
 bool provisionado = false;
