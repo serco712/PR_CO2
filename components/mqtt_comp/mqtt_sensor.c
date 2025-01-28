@@ -273,7 +273,7 @@ void reconnect_mqtt_prov() {
     nvs_get_str(nvs_handle, "URI", NULL, &required_size);
     char *uri = malloc(required_size);
     nvs_get_str(nvs_handle, "URI", uri, &required_size);
-    nvs_get_str(nvs_handle, "credentials", prov, &required_size);
+    nvs_get_str(nvs_handle, "credentials", NULL, &required_size);
     char* prov = malloc(required_size);
     nvs_get_str(nvs_handle, "credentials", prov, &required_size);
     ESP_LOGI(TAG, "required size=%d", required_size);
