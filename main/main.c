@@ -61,19 +61,19 @@ void init_i2c(void) {
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
+    //esp_mqtt_event_handle_t event = event_data;
 
-    switch (event->event_id) {
+    switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_COMP_CONNECTED:
             ESP_LOGI(TAG, "Conectado a MQTT");
-            const esp_timer_create_args_t periodic_timer_args = {
-                .callback = &periodic_timer_callback,
-                /* name is optional, but may help identify the timer when debugging */
-                .name = "periodic"
-            };
+            // const esp_timer_create_args_t periodic_timer_args = {
+            //     .callback = &periodic_timer_callback,
+            //     /* name is optional, but may help identify the timer when debugging */
+            //     .name = "periodic"
+            // };
             
-            ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-            ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
+            // ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+            // ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
 
 
             break;
@@ -85,8 +85,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
 
         default:
-            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
-            ESP_LOGI(TAG, "MQTT data received on topic %.*s: %.*s", event->topic_len, event->topic, event->data_len, event->data);
+            //ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            //ESP_LOGI(TAG, "MQTT data received on topic %.*s: %.*s", event->topic_len, event->topic, event->data_len, event->data);
             //ESP_LOGI(TAG, "Other event=%s", cJSON_Print(response));
             break;
     }
@@ -98,6 +98,14 @@ void app_main(void)
 {
 //Primero comprobamos si venimos de una OTA
     init_i2c();
+    const esp_timer_create_args_t periodic_timer_args = {
+        .callback = &periodic_timer_callback,
+        /* name is optional, but may help identify the timer when debugging */
+        .name = "periodic"
+    };
+    
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
     
     //Comprobamos si estamos provisionados
     esp_event_loop_args_t loop_args = {
@@ -132,23 +140,25 @@ void app_main(void)
 
 static void periodic_timer_callback(void* arg)
 {
-    sgp30_get_co2_and_tvoc(&aqSensor, &co2, &tvoc);
-    cJSON *root = cJSON_CreateObject();
-    //cJSON_AddStringToObject(root, "deviceName", "");
-    cJSON_AddNumberToObject(root, "co2", co2);
-    cJSON_AddNumberToObject(root, "tvoc", tvoc);
+    if (isConnected()) {
+        sgp30_get_co2_and_tvoc(&aqSensor, &co2, &tvoc);
+        cJSON *root = cJSON_CreateObject();
+        //cJSON_AddStringToObject(root, "deviceName", "");
+        cJSON_AddNumberToObject(root, "co2", co2);
+        cJSON_AddNumberToObject(root, "tvoc", tvoc);
 
-    char *json_data = cJSON_Print(root);
-    if (json_data)
-    {
-        send_data(json_data);
-        ESP_LOGI(TAG, "Sent provisioning request: %s", json_data);
-        free(json_data);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Failed to create JSON data");
-    }
+        char *json_data = cJSON_Print(root);
+        if (json_data)
+        {
+            send_data(json_data);
+            ESP_LOGI(TAG, "Sent provisioning request: %s", json_data);
+            free(json_data);
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to create JSON data");
+        }
 
-    cJSON_Delete(root);
+        cJSON_Delete(root);
+    }
 }

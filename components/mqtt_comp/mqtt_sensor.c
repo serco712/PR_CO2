@@ -46,6 +46,7 @@ char *provision_device_secret;
 char *device_name;
 static int pub_interval;
 bool pub_enabled;
+bool mqtt_connected = false;
 
 static esp_mqtt_client_handle_t client = NULL;
 
@@ -56,6 +57,10 @@ char provisioned_client_username[64] = {0};
 //Funcion para suscribir clientes a diferentes topics de mensajes MQTT
 void subscribe(char* topic) {
     esp_mqtt_client_subscribe(client, topic, 1);
+}
+
+bool isConnected() {
+    return mqtt_connected;
 }
 
 //Función que llama la tarea para publicar los valores aleatoriamente
@@ -202,12 +207,14 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        ESP_ERROR_CHECK(esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY));
+        //ESP_ERROR_CHECK(esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY));
+        mqtt_connected = true;
         break;
 
     //case MQTT_EVENT_PUB
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        mqtt_connected = false;
         reconnect_mqtt_prov();
         break;
 

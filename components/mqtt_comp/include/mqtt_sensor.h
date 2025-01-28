@@ -15,8 +15,6 @@ enum
 };
 
 
-
-
 /**
  * @brief Inicializa el cliente MQTT.
  *
@@ -62,5 +60,7 @@ void reconnect_mqtt_prov();
 void send_data(char* data);
 
 void subscribe(char* topic);
+
+bool isConnected();
 
 #endif // MQTT_SENSOR_H
