@@ -109,7 +109,7 @@ void app_main(void)
     };
     
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 20000000));
     
     //Comprobamos si estamos provisionados
     esp_event_loop_args_t loop_args = {
