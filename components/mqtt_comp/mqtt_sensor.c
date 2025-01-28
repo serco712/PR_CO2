@@ -28,6 +28,7 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 #include "mqtt_client.h"
+#include "cJSON.h"
 #include "mqtt_sensor.h"
 
 #define PROVISION_REQUEST_TOPIC "/provision/request"
@@ -272,24 +273,32 @@ void reconnect_mqtt_prov() {
     nvs_get_str(nvs_handle, "URI", NULL, &required_size);
     char *uri = malloc(required_size);
     nvs_get_str(nvs_handle, "URI", uri, &required_size);
-    nvs_get_str(nvs_handle, "credentials", provisioned_client_username, &required_size);
-    ESP_LOGI(TAG, "URI=%s", uri);
-    ESP_LOGI(TAG, "access token=%s", provisioned_client_username);
-    nvs_close(nvs_handle);
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = uri,
-        .credentials.username = provisioned_client_username,
-        .credentials.client_id = ""
-    };
+    nvs_get_str(nvs_handle, "credentials", prov, &required_size);
+    char* prov = malloc(required_size);
+    nvs_get_str(nvs_handle, "credentials", prov, &required_size);
+    ESP_LOGI(TAG, "required size=%d", required_size);
+    if (required_size != 0) {
+        ESP_LOGI(TAG, "URI=%s", uri);
+        ESP_LOGI(TAG, "access token=%s", prov);
+        nvs_close(nvs_handle);
+        esp_mqtt_client_config_t mqtt_cfg = {
+            .broker.address.uri = uri,
+            .credentials.username = prov,
+            .credentials.client_id = ""
+        };
 
-    client = esp_mqtt_client_init(&mqtt_cfg);
-    if (!client) {
-        ESP_LOGE(TAG, "Failed to initialize MQTT client");
-        return;
+        client = esp_mqtt_client_init(&mqtt_cfg);
+        if (!client) {
+            ESP_LOGE(TAG, "Failed to initialize MQTT client");
+            return;
+        }
+
+        // Registrar el manejador de eventos
+        esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_prov, NULL);
     }
-
-    // Registrar el manejador de eventos
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_prov, NULL);
+    else
+        esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov, NULL);
+    
     // Iniciar el cliente MQTT
     esp_mqtt_client_start(client);
 }
