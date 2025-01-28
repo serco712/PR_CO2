@@ -22,47 +22,33 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "esp_log.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
-
+#include "mqtt_client.h"
 #include "mqtt_sensor.h"
 
-#include "esp_log.h"
-#include "mqtt_client.h"
+#define PROVISION_REQUEST_TOPIC "/provision/request"
+#define PROVISION_RESPONSE_TOPIC "/provision/response"
 
-const char *BROKER_URL = CONFIG_BROKER_URL;
-const int port = CONFIG_MQTT_PORT;
-const char *USERNAME = CONFIG_USERNAME ;
-const char *CLIENT_ID = CONFIG_CLIENT_ID;
-const char *provision_device_key = CONFIG_PROVISION_DEVICE_KEY;
-const char *provision_device_secret = CONFIG_PROVISION_DEVICE_SECRET;
+ESP_EVENT_DEFINE_BASE(MQTT_COMP_EVENTS);
 
-const char *edificio = CONFIG_EDIFICIO;
-const char *piso = CONFIG_PISO;
-const char *aula = CONFIG_AULA;
-const char *medicion = CONFIG_MEDICION;
-const char *tipo_dato = CONFIG_TIPO_DATO;
+static const char *TAG = "mqtt_component";
 
-static int pub_interval = CONFIG_SEND_INTERVAL;
-bool pub_enabled = true;
+esp_event_loop_handle_t loop_connect;
+char *provision_device_key;
+char *provision_device_secret;
+char *device_name;
+static int pub_interval;
+bool pub_enabled;
 
+static esp_mqtt_client_handle_t client = NULL;
 
 bool provisionado = false;
 
 char provisioned_client_username[64] = {0}; 
-
-typedef struct {
-    esp_mqtt_client_handle_t client;
-    int pub_interval;
-} pub_task_params_t;
-
-static esp_mqtt_client_handle_t client;
-
-esp_mqtt_client_handle_t mqtt_client() {
-    return client;
-}
 
 //Función que llama la tarea para publicar los valores aleatoriamente
 
@@ -86,7 +72,7 @@ void save_credentials(const char *credentials)
 void send_provision_request()
 {
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "deviceName", CLIENT_ID);
+    //cJSON_AddStringToObject(root, "deviceName", device_name);
     cJSON_AddStringToObject(root, "provisionDeviceKey", provision_device_key);
     cJSON_AddStringToObject(root, "provisionDeviceSecret", provision_device_secret);
 
@@ -208,6 +194,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY);
         break;
 
     //case MQTT_EVENT_PUB
@@ -287,10 +274,7 @@ void reconnect_mqtt_prov() {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
         .credentials.username = provisioned_client_username,
-        .credentials.client_id = CLIENT_ID,
-        .broker.address.port = port,
-        .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,   
-        .broker.verification.skip_cert_common_name_check = false,
+        .credentials.client_id = ""
     };
 
     client = esp_mqtt_client_init(&mqtt_cfg);
@@ -311,6 +295,7 @@ void mqtt_app_start_not_prov(cJSON *data)
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+
     ESP_LOGI(TAG, "URI=%s", uri->valuestring);
     ESP_LOGI(TAG, "key=%s", key->valuestring);
     ESP_LOGI(TAG, "secret=%s", secret->valuestring);
@@ -334,11 +319,8 @@ void mqtt_app_start_not_prov(cJSON *data)
 
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri->valuestring,
-        .credentials.client_id = CLIENT_ID,
-        .credentials.username = "provision",
-        .broker.address.port = port,
-        .broker.verification.crt_bundle_attach = esp_crt_bundle_attach,   
-        .broker.verification.skip_cert_common_name_check = false,
+        .credentials.client_id = "",
+        .credentials.username = "provision"
     };
 
     provision_device_key = key->valuestring;
@@ -351,8 +333,9 @@ void mqtt_app_start_not_prov(cJSON *data)
     esp_mqtt_client_start(client);
 }
 
-void mqtt_app_start(char *json_data) {
-     ESP_LOGI(TAG, "json data=%s", json_data);
+void mqtt_app_start(char *json_data, esp_event_loop_handle_t loop) {
+    loop_connect = loop;
+    ESP_LOGI(TAG, "json data=%s", json_data);
     cJSON *data = cJSON_Parse(json_data);
     if (data)
        mqtt_app_start_not_prov(data);
@@ -370,4 +353,7 @@ void mqtt_sensor_disable() {
     ESP_LOGI(TAG, "Publicación deshabilitada");
 }
 
+void send_data(char* data) {
+    esp_mqtt_client_publish(client, "v1/devices/me/telemetry", data, 0, 1, 0);
+}
 

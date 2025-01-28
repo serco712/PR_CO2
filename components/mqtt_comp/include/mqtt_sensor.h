@@ -4,6 +4,17 @@
 #include "mqtt_client.h"
 #include "cJSON.h"
 
+
+ESP_EVENT_DECLARE_BASE(MQTT_COMP_EVENTS);
+enum
+{
+    MQTT_COMP_CONNECTED,
+    MQTT_COMP_OTA
+};
+
+
+
+
 /**
  * @brief Inicializa el cliente MQTT.
  *
@@ -34,7 +45,7 @@ void mqtt_sensor_disable();
 
 void pub_task();
 
-void mqtt_app_start(char *json_data);
+void mqtt_app_start(char *json_data, esp_event_loop_handle_t loop);
 
 void mqtt_app_start_not_prov(cJSON *data);
 
@@ -46,6 +57,6 @@ void reconnect_mqtt_not_prov();
 
 void reconnect_mqtt_prov();
 
-esp_mqtt_client_handle_t mqtt_client() 
+void send_data(char* data);
 
 #endif // MQTT_SENSOR_H

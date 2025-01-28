@@ -1,87 +1,6 @@
 menu "Example Configuration"
 
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
-    menu "MQTT"
-        config BROKER_URL
-            string "Broker URL"
-            default "mqtt://mqtt.eclipseprojects.io"
-            help
-                URL of the broker to connect to
-    
-        config BROKER_URL_FROM_STDIN
-            bool
-            default y if BROKER_URL = "FROM_STDIN"
-
-        config MQTT_PORT
-            int "MQTT PORT"
-            default 1883
-            help
-                1883 default, 8883 for TLS
-
-        config USERNAME
-            string "Credential Username"
-            default ""
-            help
-                Created from broker, only if "Allow Anonymous == false"
-
-        config CLIENT_ID
-            string  "Client ID"
-            default ""
-            help
-                Should be unique for each device
-
-        config PROVISION_DEVICE_KEY
-            string "Provision Device Key"
-            default ""
-            help
-                Created from thingsboard´s profiles
-
-        config PROVISION_DEVICE_SECRET
-            string "Provision Device Secret"
-            default ""
-            help
-                Created from thingsboard´s profiles
-
-        config SEND_INTERVAL
-            int 
-            default 1000
-            help 
-                Time in ms to publish sensor data
-
-        menu "TOPIC"
-            config EDIFICIO
-                string  "Edificio"
-                default ""
-                help
-                    Location of the device
-
-            config PISO
-                string "Piso"
-                default ""
-                help
-                    Floor where the device is
-    
-            config AULA
-                string "Aula"
-                default ""
-                help
-                    Room where the device is
-
-            config MEDICION
-                string "Medición"
-                default ""
-                help
-                    The sensor is being read
-
-            config TIPO_DATO
-                string "Tipo de dato"
-                default ""
-                help
-                    What are we reading from the sensor
-
-        endmenu
-            
-    endmenu
     
     menu "Wifi cofiguration"
         choice EXAMPLE_PROV_SECURITY_VERSION
@@ -146,14 +65,6 @@ menu "Example Configuration"
                 Set the Maximum retry to avoid reconnecting to an inexistent AP or if credentials
                 are misconfigured. Provisioned credentials are erased and internal state machine
                 is reset after this threshold is reached.
-    
-        config EXAMPLE_PROV_USING_BLUEDROID
-            bool
-            depends on (BT_BLUEDROID_ENABLED && (IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32S3))
-            select BT_BLE_42_FEATURES_SUPPORTED
-            default y
-            help
-                This enables BLE 4.2 features for Bluedroid.
     
         config EXAMPLE_REPROVISIONING
             bool "Re-provisioning"
