@@ -55,6 +55,11 @@ void subscribe(char* topic) {
     esp_mqtt_client_subscribe(client, topic, 1);
 }
 
+esp_mqtt_client_handle_t unregister_mqtt_handler(){
+    esp_mqtt_client_unregister_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler_not_prov);
+    return client;
+}
+
 //Función que llama la tarea para publicar los valores aleatoriamente
 
 void save_credentials(const char *credentials)
@@ -241,6 +246,9 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     pub_enabled = false;
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
+        if (strstr(event->topic, "fw") != NULL) {
+            esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+        }
           
         break;
     case MQTT_EVENT_ERROR:

@@ -61,4 +61,7 @@ void send_data(char* data);
 
 void subscribe(char* topic);
 
+esp_mqtt_client_handle_t unregister_mqtt_handler();
+static void mqtt_event_handler_not_prov(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+
 #endif // MQTT_SENSOR_H
