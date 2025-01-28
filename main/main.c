@@ -63,10 +63,7 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
 
     switch (event->event_id) {
         case MQTT_COMP_CONNECTED:
-<<<<<<< Updated upstream
-            ESP_LOGI(TAG, "Conectado al broker MQTT");
-            //esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
-=======
+
             ESP_LOGI(TAG, "Conectado a MQTT");
                     const esp_timer_create_args_t periodic_timer_args = {
                 .callback = &periodic_timer_callback,
@@ -78,15 +75,13 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
             
             ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
 
-    //ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
 
->>>>>>> Stashed changes
             break;
 
         case MQTT_COMP_OTA:
             ESP_LOGI(TAG, "Nueva información de OTA disponible");
-            esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+", 0); //suscripcion a topic de OTA
-            esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+",1);
+            client_subscribe("v1/devices/me/attributes/response/+");
+            client_subscribe("v2/fw/response/+/chunk/+");
             break;
 
         default:
