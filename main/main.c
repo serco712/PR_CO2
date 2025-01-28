@@ -55,6 +55,32 @@ void init_i2c(void) {
     sgp30_init(&aqSensor, bus_handle, SGP30_I2C_ADDR);
 }
 
+static void event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
+    esp_mqtt_event_handle_t event = event_data;
+    client = event->client;
+
+    switch (event->event_id) {
+        case MQTT_COMP_CONNECTED:
+            ESP_LOGI(TAG, "Conectado al broker MQTT");
+            esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
+            break;
+
+        case MQTT_COMP_OTA:
+            ESP_LOGI(TAG, "Desconectado del broker MQTT");
+            reconnect_mqtt_not_prov();
+            break;
+
+        default:
+            ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+            ESP_LOGI(TAG, "MQTT data received on topic %.*s: %.*s", event->topic_len, event->topic, event->data_len, event->data);
+            //ESP_LOGI(TAG, "Other event=%s", cJSON_Print(response));
+            break;
+    }
+}
+
+
 
 void app_main(void)
 {
@@ -69,7 +95,7 @@ void app_main(void)
     esp_timer_handle_t periodic_timer;
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
 
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
+    //ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
     //Comprobamos si estamos provisionados
     int msg_id;
     main_wifi();

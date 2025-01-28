@@ -2,5 +2,6 @@
     "idf.port": "/dev/ttyUSB0",
     "files.associations": {
         "sgp30.h": "c"
-    }
+    },
+    "idf.flashType": "UART"
 }

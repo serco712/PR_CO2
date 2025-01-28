@@ -33,7 +33,11 @@
 #define PROVISION_REQUEST_TOPIC "/provision/request"
 #define PROVISION_RESPONSE_TOPIC "/provision/response"
 
+ESP_EVENT_DEFINE_BASE(MQTT_COMP_EVENTS);
+
 static const char *TAG = "mqtt_component";
+
+esp_event_loop_handle_t loop_connect;
 char *provision_device_key;
 char *provision_device_secret;
 char *device_name;
@@ -190,6 +194,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY);
         break;
 
     //case MQTT_EVENT_PUB
@@ -328,8 +333,9 @@ void mqtt_app_start_not_prov(cJSON *data)
     esp_mqtt_client_start(client);
 }
 
-void mqtt_app_start(char *json_data) {
-     ESP_LOGI(TAG, "json data=%s", json_data);
+void mqtt_app_start(char *json_data, esp_event_loop_handle_t loop) {
+    loop_connect = loop;
+    ESP_LOGI(TAG, "json data=%s", json_data);
     cJSON *data = cJSON_Parse(json_data);
     if (data)
        mqtt_app_start_not_prov(data);
