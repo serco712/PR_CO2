@@ -23,6 +23,8 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
+#include "esp_err.h"
+#include "esp_event.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
@@ -200,7 +202,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY);
+        ESP_ERROR_CHECK(esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY));
         break;
 
     //case MQTT_EVENT_PUB
@@ -273,7 +275,7 @@ void reconnect_mqtt_prov() {
     nvs_get_str(nvs_handle, "URI", NULL, &required_size);
     char *uri = malloc(required_size);
     nvs_get_str(nvs_handle, "URI", uri, &required_size);
-    nvs_get_str(nvs_handle, "credentials", prov, &required_size);
+    nvs_get_str(nvs_handle, "credentials", NULL, &required_size);
     char* prov = malloc(required_size);
     nvs_get_str(nvs_handle, "credentials", prov, &required_size);
     ESP_LOGI(TAG, "required size=%d", required_size);
@@ -347,8 +349,8 @@ void mqtt_app_start_not_prov(cJSON *data)
     esp_mqtt_client_start(client);
 }
 
-void mqtt_app_start(char *json_data, esp_event_loop_handle_t loop) {
-    loop_connect = loop;
+void mqtt_app_start(char *json_data, esp_event_loop_handle_t *loop) {
+    loop_connect = *loop;
     ESP_LOGI(TAG, "json data=%s", json_data);
     cJSON *data = cJSON_Parse(json_data);
     if (data)
