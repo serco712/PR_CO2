@@ -12,11 +12,11 @@ that copies the project to user specified path and set it's name. For more infor
 
 ## Como hacer el provisionamiento wifi
 
-Nos dirigimos al directorio esp-idf/tools/esp_prov
-Creamos un entorno virtual con el comando source .venv/bin/activate
-Hacemos un export IDF_PATH e instalamos las dependencias que marca el README.md
-Una vez que la placa este lista para ser provisionada nos conectamos al wifi de la placa y ejecutamos el comando 
-python3 esp_prov.py --transport softap --sec2_username wifiprov --sec2_pwd abcd1234 --ssid Redmi9A --sec_ver 2  --passphrase uddhjdk623 --custom_data "{\"URI\":\"mqtt://thingsboard.cloud:1883\",\"deviceSecret\":\"aajpwf87feik8o8vpm3f\",\"deviceKey\":\"ycfhbm5a0enr50t42bqf\"}"
+-Nos dirigimos al directorio esp-idf/tools/esp_prov
+-Creamos un entorno virtual con el comando source .venv/bin/activate
+-Hacemos un export IDF_PATH e instalamos las dependencias que marca el README.md
+-Una vez que la placa este lista para ser provisionada nos conectamos al wifi de la placa y ejecutamos el comando 
+python3 esp_prov.py --transport softap --sec2_username wifiprov --sec2_pwd abcd1234 --ssid Redmi9A --sec_ver 2  --passphrase uddhjdk623 --custom_data "{\"URI\":\"mqtt://192.168.8.214:1883\",\"deviceSecret\":\"exmrrodm40frz7wjje3d\",\"deviceKey\":\"ja47czbn3npxz0tn8hal\"}"
 
 ## Example folder contents
 
@@ -29,10 +29,27 @@ files that provide set of directives and instructions describing the project's s
 Below is short explanation of remaining files in the project folder.
 
 ```
-├── CMakeLists.txt
+├── components
+│   ├── mqtt_comp
+|   |   ├── inlcude
+|   |   |   └── mqtt_sensor.h
+|   │   ├── CMakeLists.txt
+|   │   ├── component.mk
+|   │   └── mqtt_sesnor.c
+|   ├── sgp30_comp
+|   |   ├── inlcude
+|   |   |   └── sgp30.h
+|   │   ├── CMakeLists.txt
+|   │   ├── component.mk
+|   │   └── sgp30.c  
 ├── main
 │   ├── CMakeLists.txt
-│   └── main.c
+│   ├── deep_sleep.c
+│   ├── idf_component.yml
+│   ├── main.c
+│   ├── wifi.c
+│   └── wifi.h
+├── CMakeLists.txt
 └── README.md                  This is the file you are currently reading
 ```
 Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
