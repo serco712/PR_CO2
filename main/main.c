@@ -59,17 +59,17 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
-    client = event->client;
 
     switch (event->event_id) {
         case MQTT_COMP_CONNECTED:
             ESP_LOGI(TAG, "Conectado al broker MQTT");
-            esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
+            //esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
             break;
 
         case MQTT_COMP_OTA:
-            ESP_LOGI(TAG, "Desconectado del broker MQTT");
-            reconnect_mqtt_not_prov();
+            ESP_LOGI(TAG, "Nueva información de OTA disponible");
+            esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+", 0); //suscripcion a topic de OTA
+            esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+",1);
             break;
 
         default:
