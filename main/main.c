@@ -80,8 +80,8 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
 
         case MQTT_COMP_OTA:
             ESP_LOGI(TAG, "Nueva información de OTA disponible");
-            client_subscribe("v1/devices/me/attributes/response/+");
-            client_subscribe("v2/fw/response/+/chunk/+");
+            subscribe("v1/devices/me/attributes/response/+");
+            subscribe("v2/fw/response/+/chunk/+");
             break;
 
         default:

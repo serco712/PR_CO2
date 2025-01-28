@@ -51,7 +51,7 @@ bool provisionado = false;
 char provisioned_client_username[64] = {0}; 
 
 //Funcion para suscribir clientes a diferentes topics de mensajes MQTT
-void client_subscribe(char* topic) {
+void subscribe(char* topic) {
     esp_mqtt_client_subscribe(client, topic, 1);
 }
 
