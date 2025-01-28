@@ -63,7 +63,10 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
 
     switch (event->event_id) {
         case MQTT_COMP_CONNECTED:
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
             ESP_LOGI(TAG, "Conectado a MQTT");
                     const esp_timer_create_args_t periodic_timer_args = {
                 .callback = &periodic_timer_callback,
