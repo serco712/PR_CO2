@@ -41,6 +41,7 @@ ESP_EVENT_DEFINE_BASE(MQTT_COMP_EVENTS);
 static const char *TAG = "mqtt_component";
 
 esp_event_loop_handle_t loop_connect;
+char *client_attribute;
 char *provision_device_key;
 char *provision_device_secret;
 char *device_name;
@@ -321,11 +322,12 @@ void mqtt_app_start_not_prov(cJSON *data)
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+    const cJSON *jerarquia = cJSON_GetObjectItem(data, "jerarquia");
 
     ESP_LOGI(TAG, "URI=%s", uri->valuestring);
     ESP_LOGI(TAG, "key=%s", key->valuestring);
     ESP_LOGI(TAG, "secret=%s", secret->valuestring);
-
+    ESP_LOGI(TAG, "jerarquia=%s", jerarquia->valuestring);
 
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
@@ -334,6 +336,7 @@ void mqtt_app_start_not_prov(cJSON *data)
         nvs_set_str(nvs_handle, "URI", uri->valuestring);
         nvs_set_str(nvs_handle, "deviceKey", key->valuestring);
         nvs_set_str(nvs_handle, "deviceSecret", secret->valuestring);
+        //nvs_set_str(nvs_handle, "jerarquia", jerarquia->valuestring);
         nvs_commit(nvs_handle);
         nvs_close(nvs_handle);
         ESP_LOGI(TAG, "Credentials saved to NVS");
@@ -351,6 +354,7 @@ void mqtt_app_start_not_prov(cJSON *data)
 
     provision_device_key = key->valuestring;
     provision_device_secret = secret->valuestring;
+    client_attribute = jerarquia->valuestring;
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
@@ -383,3 +387,11 @@ void send_data(char* data) {
     esp_mqtt_client_publish(client, "v1/devices/me/telemetry", data, 0, 1, 0);
 }
 
+void send_atribute() {
+    char atributo_json[100];
+    char inicio[20] = "{\"Jerarquia\":\"";
+    char final[5]= "\"}";
+    snprintf(atributo_json, sizeof(atributo_json), "%s%s%s", inicio, client_attribute, final);
+    ESP_LOGI(TAG, "JSON de la jerarquia: %s", atributo_json);
+    esp_mqtt_client_publish(client, "v1/devices/me/attributes", atributo_json, 0, 1, 0);
+}
