@@ -11,6 +11,7 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "mqtt_sensor.h"
+#include "esp_event_base.h"
 #include "wifi.h"
 #include "sgp30.h"
 #include "mqtt_client.h"
@@ -59,17 +60,31 @@ static void event_handler(void *handler_args, esp_event_base_t base, int32_t eve
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
-    client = event->client;
 
     switch (event->event_id) {
         case MQTT_COMP_CONNECTED:
-            ESP_LOGI(TAG, "Conectado al broker MQTT");
-            esp_mqtt_client_subscribe(client, PROVISION_RESPONSE_TOPIC, 0);
+<<<<<<< Updated upstream
+
+=======
+>>>>>>> Stashed changes
+            ESP_LOGI(TAG, "Conectado a MQTT");
+                    const esp_timer_create_args_t periodic_timer_args = {
+                .callback = &periodic_timer_callback,
+                /* name is optional, but may help identify the timer when debugging */
+                .name = "periodic"
+            };
+
+            esp_timer_handle_t periodic_timer;
+            
+            ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
+
+
             break;
 
         case MQTT_COMP_OTA:
-            ESP_LOGI(TAG, "Desconectado del broker MQTT");
-            reconnect_mqtt_not_prov();
+            ESP_LOGI(TAG, "Nueva información de OTA disponible");
+            subscribe("v1/devices/me/attributes/response/+");
+            subscribe("v2/fw/response/+/chunk/+");
             break;
 
         default:
@@ -86,18 +101,17 @@ void app_main(void)
 {
 //Primero comprobamos si venimos de una OTA
     init_i2c();
-    const esp_timer_create_args_t periodic_timer_args = {
-        .callback = &periodic_timer_callback,
-        /* name is optional, but may help identify the timer when debugging */
-        .name = "periodic"
-    };
-
-    esp_timer_handle_t periodic_timer;
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-
-    //ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 5000000));
+    
     //Comprobamos si estamos provisionados
     int msg_id;
+    esp_event_loop_handle_t loop;
+    esp_event_loop_args_t loop_args = {
+        .queue_size = 5,
+        .task_name = NULL // no task will be created
+    };
+
+    ESP_ERROR_CHECK(esp_event_loop_create(&loop_args, &loop));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register_with(loop, MQTT_COMP_EVENTS, ESP_EVENT_ANY_ID, event_handler, loop, NULL));
     main_wifi();
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
@@ -111,7 +125,7 @@ void app_main(void)
 
     //1-  Inicializar MQTT
     ESP_LOGI(TAG, "Iniciando MQTT...");
-    mqtt_app_start(get_thingsboard_json());
+    mqtt_app_start(get_thingsboard_json(), loop);
     ESP_LOGI(TAG, "MQTT inicializado.");
 
     // Esperar a que MQTT se conecte

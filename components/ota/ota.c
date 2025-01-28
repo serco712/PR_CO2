@@ -40,3 +40,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
 
     }
 }
+
+void ota(){
+    esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+",1);
+}

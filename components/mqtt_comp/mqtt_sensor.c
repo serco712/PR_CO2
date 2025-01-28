@@ -50,6 +50,11 @@ bool provisionado = false;
 
 char provisioned_client_username[64] = {0}; 
 
+//Funcion para suscribir clientes a diferentes topics de mensajes MQTT
+void subscribe(char* topic) {
+    esp_mqtt_client_subscribe(client, topic, 1);
+}
+
 //Función que llama la tarea para publicar los valores aleatoriamente
 
 void save_credentials(const char *credentials)

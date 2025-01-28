@@ -59,4 +59,6 @@ void reconnect_mqtt_prov();
 
 void send_data(char* data);
 
+void subscribe(char* topic);
+
 #endif // MQTT_SENSOR_H
