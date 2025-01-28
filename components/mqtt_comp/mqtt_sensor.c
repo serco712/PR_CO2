@@ -251,6 +251,9 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     pub_enabled = false;
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
+        if (strstr(event->topic, "fw") != NULL) {
+            esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+        }
           
         break;
     case MQTT_EVENT_ERROR:

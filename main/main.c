@@ -19,6 +19,8 @@
 #include "lwip/sys.h"
 #include "esp_timer.h"
 
+#include "ota.h"
+
 
 #define EXAMPLE_ESP_WIFI_CHANNEL   1
 #define EXAMPLE_MAX_STA_CONN       4
@@ -79,9 +81,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
 
         case MQTT_COMP_OTA:
-            ESP_LOGI(TAG, "Nueva información de OTA disponible");
+            ESP_LOGI(TAG, "Nueva informacion de OTA disponible");
+            esp_mqtt_client_handle_t client =  unregister_mqtt_handler();
             subscribe("v1/devices/me/attributes/response/+");
             subscribe("v2/fw/response/+/chunk/+");
+            main_ota(client);
             break;
 
         default:

@@ -1,0 +1,1 @@
+void main_ota(esp_mqtt_client_handle_t client);
