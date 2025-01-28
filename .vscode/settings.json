@@ -1,7 +1,8 @@
 {
     "idf.port": "/dev/ttyUSB0",
     "files.associations": {
-        "sgp30.h": "c"
+        "sgp30.h": "c",
+        "mqtt_sensor.h": "c"
     },
     "idf.flashType": "UART"
 }

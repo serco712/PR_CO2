@@ -3,6 +3,8 @@
 
 #include "mqtt_client.h"
 #include "cJSON.h"
+#include "esp_event_base.h"
+#include "esp_event.h"
 
 
 ESP_EVENT_DECLARE_BASE(MQTT_COMP_EVENTS);
@@ -45,7 +47,7 @@ void mqtt_sensor_disable();
 
 void pub_task();
 
-void mqtt_app_start(char *json_data, esp_event_loop_handle_t loop);
+void mqtt_app_start(char *json_data, esp_event_loop_handle_t *loop);
 
 void mqtt_app_start_not_prov(cJSON *data);
 
