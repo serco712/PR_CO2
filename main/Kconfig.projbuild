@@ -66,14 +66,6 @@ menu "Example Configuration"
                 are misconfigured. Provisioned credentials are erased and internal state machine
                 is reset after this threshold is reached.
     
-        config EXAMPLE_PROV_USING_BLUEDROID
-            bool
-            depends on (BT_BLUEDROID_ENABLED && (IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32S3))
-            select BT_BLE_42_FEATURES_SUPPORTED
-            default y
-            help
-                This enables BLE 4.2 features for Bluedroid.
-    
         config EXAMPLE_REPROVISIONING
             bool "Re-provisioning"
             help
