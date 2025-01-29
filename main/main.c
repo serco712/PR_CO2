@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "esp_pm.h"
 #include "mqtt_sensor.h"
 #include "esp_event_base.h"
 #include "wifi.h"
@@ -117,6 +118,14 @@ void app_main(void)
             printf("Not a deep sleep reset\n");
     }
     
+    esp_pm_config_t pow_mng = {
+        .max_freq_mhz = 160,
+        .min_freq_mhz = 40,
+        .light_sleep_enable = true
+    };
+
+    esp_pm_configure(&pow_mng);
+
     const esp_timer_create_args_t periodic_timer_args = {
         .callback = &periodic_timer_callback,
         /* name is optional, but may help identify the timer when debugging */

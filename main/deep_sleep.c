@@ -18,6 +18,7 @@ static RTC_DATA_ATTR struct timeval sleep_enter_time;
 static struct timeval sleep_enter_time;
 #endif
 
+
 static void deep_sleep_task(void)
 {
     /**
