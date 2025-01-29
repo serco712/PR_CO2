@@ -104,6 +104,16 @@ void app_main(void)
 {
 //Primero comprobamos si venimos de una OTA
     init_i2c();
+    switch (esp_sleep_get_wakeup_cause()) {
+        case ESP_SLEEP_WAKEUP_TIMER: {
+            printf("Wake up from timer. Time spent in deep sleep: %dms\n", sleep_time_ms);
+            break;
+        }
+        case ESP_SLEEP_WAKEUP_UNDEFINED:
+        default:
+            printf("Not a deep sleep reset\n");
+    }
+    
     const esp_timer_create_args_t periodic_timer_args = {
         .callback = &periodic_timer_callback,
         /* name is optional, but may help identify the timer when debugging */
