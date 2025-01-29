@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <string.h>
 #include <esp_wifi.h>
-
 #include "nvs_flash.h"
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
@@ -18,7 +17,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 #include "esp_timer.h"
-
+#include "esp_sleep.h"
+#include "deep_sleep.c"
 #include "ota.h"
 
 
@@ -116,8 +116,8 @@ void app_main(void)
         .name = "periodic_ds"
     };
     
-    ESP_ERROR_CHECK(esp_timer_create(&periodic_ds_timer_args, &periodic_ds_timer_args));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_ds_timer_args, 120000000));
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_ds_timer_args, &periodic_timer_ds));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer_ds, 120000000));
     
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 15000000));
@@ -185,5 +185,11 @@ static void periodic_timer_callback(void* arg)
 
 static void periodic_timer_ds_callback(void* arg)
 {
-    
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);          // Deshabilitar cualquier timer antes de entrar a deep sleep
+    example_deep_sleep_register_rtc_timer_wakeup();
+    deep_sleep_task();
+    while(1){
+        ESP_LOGI(TAG, "No debería estar aquí");
+        vTaskDelay(1000);
+    }
 }

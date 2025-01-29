@@ -4,5 +4,6 @@
         "sgp30.h": "c",
         "mqtt_sensor.h": "c"
     },
-    "idf.flashType": "UART"
+    "idf.flashType": "UART",
+    "idf.portWin": "COM6"
 }
