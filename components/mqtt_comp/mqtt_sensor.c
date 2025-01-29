@@ -320,7 +320,6 @@ void reconnect_mqtt_not_prov() {
 }
 
 void reconnect_mqtt_prov() {
-    jerarquizado = true;
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
     size_t required_size = 0;
