@@ -5,7 +5,6 @@
 #include "freertos/task.h"
 #include "driver/uart.h"
 #include "esp_sleep.h"
-#include "esp_pm.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "nvs_flash.h"
@@ -19,13 +18,6 @@ static RTC_DATA_ATTR struct timeval sleep_enter_time;
 static struct timeval sleep_enter_time;
 #endif
 
-esp_pm_config_t pow_mng = {
-        .max_freq_mhz = 160,
-        .min_freq_mhz = 40,
-        .light_sleep_enable = true
-    };
-
-    esp_pm_configure(&pow_mng);
 
 static void deep_sleep_task(void)
 {
