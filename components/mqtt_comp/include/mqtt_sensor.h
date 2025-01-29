@@ -61,6 +61,8 @@ void send_data(char* data);
 
 void subscribe(char* topic);
 
+void send_atribute();
+
 bool isConnected();
 
 #endif // MQTT_SENSOR_H

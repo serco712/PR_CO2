@@ -33,6 +33,8 @@
 #include "cJSON.h"
 #include "mqtt_sensor.h"
 
+#include "esp_ota_ops.h"
+
 #define PROVISION_REQUEST_TOPIC "/provision/request"
 #define PROVISION_RESPONSE_TOPIC "/provision/response"
 
@@ -41,12 +43,14 @@ ESP_EVENT_DEFINE_BASE(MQTT_COMP_EVENTS);
 static const char *TAG = "mqtt_component";
 
 esp_event_loop_handle_t loop_connect;
+char *client_attribute;
 char *provision_device_key;
 char *provision_device_secret;
 char *device_name;
 static int pub_interval;
 bool pub_enabled;
 bool mqtt_connected = false;
+bool ota = false;
 
 static esp_mqtt_client_handle_t client = NULL;
 
@@ -62,6 +66,15 @@ void subscribe(char* topic) {
 bool isConnected() {
     return mqtt_connected;
 }
+
+bool activeOTA(){
+    return ota;
+}
+
+static esp_ota_handle_t ota_handle = 0;
+static const esp_partition_t *update_partition = NULL;
+static int total_received = 0;
+
 
 //Función que llama la tarea para publicar los valores aleatoriamente
 
@@ -251,9 +264,36 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     pub_enabled = false;
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
-        if (strstr(event->topic, "fw") != NULL) {
-            esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+        if (strstr(event->topic, "fw") != NULL) { //se ha lanzado una campaña de OTA
+            //esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+            ota = true;
+            // esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+");
+            // esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+");
         }
+        else if (activeOTA()){
+            // Procesar datos recibidos del nuevo firmware de la OTA
+            if (strstr(event->topic, "chunk") != NULL) {
+                ESP_LOGI(TAG, "Recibiendo parte del firmware (%d bytes)...", event->data_len);
+
+                if (ota_handle == 0) {
+                    // Inicializar OTA
+                    update_partition = esp_ota_get_next_update_partition(NULL);
+                    esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+                    ESP_LOGI(TAG, "Iniciando partición OTA");
+                    total_received = 0;
+                }
+
+                esp_ota_write(ota_handle, event->data, event->data_len); //escribimos chunk a chunk del fw recibido en la particion de OTA.
+                total_received += event->data_len;
+
+                ESP_LOGI(TAG, "Total recibido: %d bytes", total_received);
+                //update_firmware(ota_handle, update_partition);
+
+                //coger el dato del atributo fw_size haciendo una publicacion sobre el atributo compartido para esperar la respuesta (en un JSON)
+                //if fw_size == total_received: ota=false; update_firmware()
+            }
+        }
+        
           
         break;
     case MQTT_EVENT_ERROR:
@@ -321,11 +361,12 @@ void mqtt_app_start_not_prov(cJSON *data)
     const cJSON *uri = cJSON_GetObjectItem(data, "URI");
     const cJSON *key = cJSON_GetObjectItem(data, "deviceKey");
     const cJSON *secret = cJSON_GetObjectItem(data, "deviceSecret");
+    const cJSON *jerarquia = cJSON_GetObjectItem(data, "jerarquia");
 
     ESP_LOGI(TAG, "URI=%s", uri->valuestring);
     ESP_LOGI(TAG, "key=%s", key->valuestring);
     ESP_LOGI(TAG, "secret=%s", secret->valuestring);
-
+    ESP_LOGI(TAG, "jerarquia=%s", jerarquia->valuestring);
 
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
@@ -334,6 +375,7 @@ void mqtt_app_start_not_prov(cJSON *data)
         nvs_set_str(nvs_handle, "URI", uri->valuestring);
         nvs_set_str(nvs_handle, "deviceKey", key->valuestring);
         nvs_set_str(nvs_handle, "deviceSecret", secret->valuestring);
+        //nvs_set_str(nvs_handle, "jerarquia", jerarquia->valuestring);
         nvs_commit(nvs_handle);
         nvs_close(nvs_handle);
         ESP_LOGI(TAG, "Credentials saved to NVS");
@@ -351,6 +393,7 @@ void mqtt_app_start_not_prov(cJSON *data)
 
     provision_device_key = key->valuestring;
     provision_device_secret = secret->valuestring;
+    client_attribute = jerarquia->valuestring;
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
@@ -383,3 +426,11 @@ void send_data(char* data) {
     esp_mqtt_client_publish(client, "v1/devices/me/telemetry", data, 0, 1, 0);
 }
 
+void send_atribute() {
+    char atributo_json[100];
+    char inicio[20] = "{\"Jerarquia\":\"";
+    char final[5]= "\"}";
+    snprintf(atributo_json, sizeof(atributo_json), "%s%s%s", inicio, client_attribute, final);
+    ESP_LOGI(TAG, "JSON de la jerarquia: %s", atributo_json);
+    esp_mqtt_client_publish(client, "v1/devices/me/attributes", atributo_json, 0, 1, 0);
+}
