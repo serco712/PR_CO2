@@ -37,7 +37,7 @@ static const char *TAG = "main";
 
 sgp30_t aqSensor;
 i2c_master_bus_handle_t bus_handle;
-esp_timer_handle_t periodic_timer;
+esp_timer_handle_t periodic_timer, periodic_timer_ds;
 esp_event_loop_handle_t loop_h;
 
 
@@ -46,6 +46,7 @@ int tvoc = 5, co2 = 5;
 // }
 
 static void periodic_timer_callback(void* arg);
+static void periodic_timer_ds_callback(void* arg);
 
 void init_i2c(void) {
     i2c_master_bus_config_t i2c_bus_config = {
@@ -107,9 +108,18 @@ void app_main(void)
         /* name is optional, but may help identify the timer when debugging */
         .name = "periodic"
     };
+
+    const esp_timer_create_args_t periodic_ds_timer_args = {
+        .callback = &periodic_timer_ds_callback,
+        /* name is optional, but may help identify the timer when debugging */
+        .name = "periodic_ds"
+    };
+    
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_ds_timer_args, &periodic_ds_timer_args));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_ds_timer_args, 120000000));
     
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 20000000));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 15000000));
     
     //Comprobamos si estamos provisionados
     esp_event_loop_args_t loop_args = {
@@ -165,4 +175,9 @@ static void periodic_timer_callback(void* arg)
 
         cJSON_Delete(root);
     }
+}
+
+static void periodic_timer_ds_callback(void* arg)
+{
+    
 }
