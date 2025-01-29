@@ -31,7 +31,7 @@ static int total_received = 0;
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
+   /* ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32, base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
@@ -39,24 +39,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     ESP_LOGD(TAG, "free heap size is %" PRIu32 ", minimum %" PRIu32, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_DATA:
-        // Procesar datos recibidos
-        if (strstr(event->topic, "chunk") != NULL) {
-            ESP_LOGI(TAG, "Recibiendo parte del firmware (%d bytes)...", event->data_len);
-
-            if (ota_handle == 0) {
-                // Inicializar OTA
-                update_partition = esp_ota_get_next_update_partition(NULL);
-                esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
-                ESP_LOGI(TAG, "Iniciando partición OTA");
-                total_received = 0;
-            }
-
-            esp_ota_write(ota_handle, event->data, event->data_len);
-            total_received += event->data_len;
-
-            ESP_LOGI(TAG, "Total recibido: %d bytes", total_received);
-        }
-        break;
+        
 
 
         case MQTT_EVENT_ERROR:
@@ -67,11 +50,23 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         default:
         break;
 
+    }*/
+}
+
+void update_firmware(esp_ota_handle_t ota_handler, esp_partition_t particion) {
+    ESP_LOGI(TAG,"Actualizando el firmware...");
+    if (esp_ota_end(ota_handler) == ESP_OK){
+        if (esp_ota_set_boot_partition(&particion) == ESP_OK) { //cambiamos la particion de arranque
+            ESP_LOGI(TAG,"Actualizacion OTA correcta. Reiniciando...");
+            esp_restart(); //reboot el nodo.
+            //Y al reiniciar, mandar telemetria como para decir que esta correcto el proceso de actualziacion de ota.
+        }
+
     }
 }
 
-void main_ota(esp_mqtt_client_handle_t client){
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL); //Registramos el handler
+void main_ota(esp_mqtt_client_handle_t client){ //seguramente haya que eliminarlo y sustituirlo por update_firmware
+    //esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL); //Registramos el handler
 
 
 }

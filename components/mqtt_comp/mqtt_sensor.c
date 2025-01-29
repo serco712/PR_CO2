@@ -33,6 +33,8 @@
 #include "cJSON.h"
 #include "mqtt_sensor.h"
 
+#include "esp_ota_ops.h"
+
 #define PROVISION_REQUEST_TOPIC "/provision/request"
 #define PROVISION_RESPONSE_TOPIC "/provision/response"
 
@@ -48,6 +50,7 @@ char *device_name;
 static int pub_interval;
 bool pub_enabled;
 bool mqtt_connected = false;
+bool ota = false;
 
 static esp_mqtt_client_handle_t client = NULL;
 
@@ -63,6 +66,15 @@ void subscribe(char* topic) {
 bool isConnected() {
     return mqtt_connected;
 }
+
+bool activeOTA(){
+    return ota;
+}
+
+static esp_ota_handle_t ota_handle = 0;
+static const esp_partition_t *update_partition = NULL;
+static int total_received = 0;
+
 
 //Función que llama la tarea para publicar los valores aleatoriamente
 
@@ -252,9 +264,36 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     pub_enabled = false;
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
-        if (strstr(event->topic, "fw") != NULL) {
-            esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+        if (strstr(event->topic, "fw") != NULL) { //se ha lanzado una campaña de OTA
+            //esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+            ota = true;
+            // esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+");
+            // esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+");
         }
+        else if (activeOTA()){
+            // Procesar datos recibidos del nuevo firmware de la OTA
+            if (strstr(event->topic, "chunk") != NULL) {
+                ESP_LOGI(TAG, "Recibiendo parte del firmware (%d bytes)...", event->data_len);
+
+                if (ota_handle == 0) {
+                    // Inicializar OTA
+                    update_partition = esp_ota_get_next_update_partition(NULL);
+                    esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+                    ESP_LOGI(TAG, "Iniciando partición OTA");
+                    total_received = 0;
+                }
+
+                esp_ota_write(ota_handle, event->data, event->data_len); //escribimos chunk a chunk del fw recibido en la particion de OTA.
+                total_received += event->data_len;
+
+                ESP_LOGI(TAG, "Total recibido: %d bytes", total_received);
+                //update_firmware(ota_handle, update_partition);
+
+                //coger el dato del atributo fw_size haciendo una publicacion sobre el atributo compartido para esperar la respuesta (en un JSON)
+                //if fw_size == total_received: ota=false; update_firmware()
+            }
+        }
+        
           
         break;
     case MQTT_EVENT_ERROR:
