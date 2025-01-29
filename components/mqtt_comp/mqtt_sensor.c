@@ -227,6 +227,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         esp_mqtt_client_subscribe(client, "v1/devices/me/attributes",1);
         esp_mqtt_client_subscribe(client, "v2/fw/response/+",1);
         mqtt_connected = true;
+        ESP_LOGI(TAG, "subs_ok");
         break;
 
     //case MQTT_EVENT_PUB
@@ -270,7 +271,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
         if (strstr(event->topic, "attributes") != NULL) { //se ha lanzado una campaña de OTA
-            
+            ESP_LOGI(TAG, "attr");
             ota = true;
             //nos quedamos con los atributos
             char request_attr[100];
@@ -279,7 +280,10 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
             esp_mqtt_client_publish(client, request_attr, "fw_size", 0, 1, 0);
             
         }
-        else if (activeOTA()){
+        else if ((strstr(event->topic, "response") != NULL) && (activeOTA())){
+            ESP_LOGI(TAG, "ota_ok");
+            cJSON *size = (uint32_t) cJSON_GetObjectItem(event->data, "fw_size");
+            ESP_LOGI(TAG, "size_ok");
             // Procesar datos recibidos del nuevo firmware de la OTA
             if (strstr(event->topic, "chunk") != NULL) {
                 ESP_LOGI(TAG, "Recibiendo parte del firmware (%d bytes)...", event->data_len);

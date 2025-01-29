@@ -130,7 +130,7 @@ void app_main(void)
     };
     
     ESP_ERROR_CHECK(esp_timer_create(&periodic_ds_timer_args, &periodic_timer_ds));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer_ds, 120000000));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer_ds, 180000000));
     
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, 15000000));
