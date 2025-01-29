@@ -51,6 +51,7 @@ static int pub_interval;
 bool pub_enabled;
 bool mqtt_connected = false;
 bool ota = false;
+bool jerarquizado = false;
 
 static esp_mqtt_client_handle_t client = NULL;
 
@@ -319,6 +320,7 @@ void reconnect_mqtt_not_prov() {
 }
 
 void reconnect_mqtt_prov() {
+    jerarquizado = true;
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_handle);
     size_t required_size = 0;
@@ -407,9 +409,11 @@ void mqtt_app_start(char *json_data, esp_event_loop_handle_t *loop) {
     ESP_LOGI(TAG, "json data=%s", json_data);
     cJSON *data = cJSON_Parse(json_data);
     if (data)
-       mqtt_app_start_not_prov(data);
-    else
+        mqtt_app_start_not_prov(data);
+    else{
+        jerarquizado = true;
         reconnect_mqtt_prov();
+    }
 }
 
 void mqtt_sensor_enable() {
@@ -433,4 +437,12 @@ void send_atribute() {
     snprintf(atributo_json, sizeof(atributo_json), "%s%s%s", inicio, client_attribute, final);
     ESP_LOGI(TAG, "JSON de la jerarquia: %s", atributo_json);
     esp_mqtt_client_publish(client, "v1/devices/me/attributes", atributo_json, 0, 1, 0);
+}
+
+bool get_jerarquizado(){
+    return jerarquizado;
+}
+
+void cambio_jerarquizado(){
+    jerarquizado = true;
 }

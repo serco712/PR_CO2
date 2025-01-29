@@ -34,7 +34,6 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static int s_retry_num = 0;
 static const char *TAG = "main";
-bool posicionado = false;
 
 sgp30_t aqSensor;
 i2c_master_bus_handle_t bus_handle;
@@ -166,10 +165,10 @@ void app_main(void)
 static void periodic_timer_callback(void* arg)
 {
     if (isConnected()) {
-        if(!posicionado){
+        if(!get_jerarquizado()){
             send_atribute();
             ESP_LOGI(TAG, "Posicionamiento enviado");
-            posicionado = true;
+            cambio_jerarquizado();
         }
         sgp30_get_co2_and_tvoc(&aqSensor, &co2, &tvoc);
         cJSON *root = cJSON_CreateObject();
