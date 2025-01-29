@@ -65,4 +65,8 @@ void send_atribute();
 
 bool isConnected();
 
+bool get_jerarquizado();
+
+void cambio_jerarquizado();
+
 #endif // MQTT_SENSOR_H
