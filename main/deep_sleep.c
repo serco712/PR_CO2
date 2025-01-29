@@ -81,5 +81,5 @@ static void example_deep_sleep_register_rtc_timer_wakeup(void)
 {
     const int wakeup_time_sec = 10;
     printf("Enabling timer wakeup, %ds\n", wakeup_time_sec);
-    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 1000000));     //Time in us
+    ESP_ERROR_CHECK(esp_sleep_enable_timer_wakeup(wakeup_time_sec * 10000000));     //Time in us
 }
