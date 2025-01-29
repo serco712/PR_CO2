@@ -51,7 +51,11 @@ static int pub_interval;
 bool pub_enabled;
 bool mqtt_connected = false;
 bool ota = false;
+<<<<<<< HEAD
+uint8_t request_id = 0;
+=======
 bool jerarquizado = false;
+>>>>>>> origin/HEAD
 
 static esp_mqtt_client_handle_t client = NULL;
 
@@ -221,7 +225,10 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        //ESP_ERROR_CHECK(esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_CONNECTED, NULL, 0, portMAX_DELAY));
+
+        esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+",1);
+        esp_mqtt_client_subscribe(client, "v1/devices/me/attributes",1);
+        esp_mqtt_client_subscribe(client, "v2/fw/response/+",1);
         mqtt_connected = true;
         break;
 
@@ -265,11 +272,15 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         //     pub_enabled = false;
         //     ESP_LOGI(TAG, "Sensor deshabilitado");
         //     }
-        if (strstr(event->topic, "fw") != NULL) { //se ha lanzado una campaña de OTA
-            //esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
+        if (strstr(event->topic, "attributes") != NULL) { //se ha lanzado una campaña de OTA
+            
             ota = true;
-            // esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+");
-            // esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+");
+            //nos quedamos con los atributos
+            char request_attr[100];
+            char inicio[20] = "v1/devices/me/attributes/request/";
+            snprintf(request_attr, sizeof(request_attr), "%s%d", inicio, request_id);
+            esp_mqtt_client_publish(client, request_attr, 0, 1, 0);
+            
         }
         else if (activeOTA()){
             // Procesar datos recibidos del nuevo firmware de la OTA
