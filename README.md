@@ -15,7 +15,7 @@
 -Creamos un entorno virtual con el comando source .venv/bin/activate
 -Hacemos un export IDF_PATH e instalamos las dependencias que marca el README.md
 -Una vez que la placa este lista para ser provisionada nos conectamos al wifi de la placa y ejecutamos el comando 
-python3 esp_prov.py --transport softap --sec2_username wifiprov --sec2_pwd abcd1234 --ssid Redmi9A --sec_ver 2  --passphrase uddhjdk623 --custom_data "{\"URI\":\"mqtt://192.168.8.214:1883\",\"deviceSecret\":\"exmrrodm40frz7wjje3d\",\"deviceKey\":\"ja47czbn3npxz0tn8hal\",\"jerarquia\":\"UCM/Info/Piso1/Aula/1/N\"}"
+python3 esp_prov.py --transport softap --sec2_username wifiprov --sec2_pwd abcd1234 --ssid Redmi9A --sec_ver 2  --passphrase uddhjdk623 --custom_data "{\"URI\":\"mqtt://thingsboard.cloud:1883\",\"deviceSecret\":\"5o9qixyvornylkfcp5kb\",\"deviceKey\":\"2nin4453393nseh1c78x\",\"jerarquia\":\"UCM/Info/Piso1/Aula/1/N\"}"
 
 -Este comando provisiona wifi y una serie de valores en la opción de custom_data los cuales son: la URI de la pagina de thingsboard o de su ubicación en docker, el device secret y el device key para conectarse al perfil de dispositivo y la posición de la jerarquia donde esta la cual esta ordenada por entidad(UCM)/Edificio(Info)/Piso(Piso1)/Tipo de habitación(Aula, Lab o Despacho)/Número de la habitación(1,2,3...)/ubicación geografica(N, S, E o O)
 
