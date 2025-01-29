@@ -267,6 +267,8 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
         if (strstr(event->topic, "fw") != NULL) { //se ha lanzado una campaña de OTA
             //esp_event_post_to(loop_connect, MQTT_COMP_EVENTS, MQTT_COMP_OTA, NULL, 0, portMAX_DELAY);
             ota = true;
+            // esp_mqtt_client_subscribe(client, "v1/devices/me/attributes/response/+");
+            // esp_mqtt_client_subscribe(client, "v2/fw/response/+/chunk/+");
         }
         else if (activeOTA()){
             // Procesar datos recibidos del nuevo firmware de la OTA
@@ -287,7 +289,7 @@ static void mqtt_event_handler_prov(void *handler_args, esp_event_base_t base, i
                 ESP_LOGI(TAG, "Total recibido: %d bytes", total_received);
                 //update_firmware(ota_handle, update_partition);
 
-                //coger el dato del atributo fw_size
+                //coger el dato del atributo fw_size haciendo una publicacion sobre el atributo compartido para esperar la respuesta (en un JSON)
                 //if fw_size == total_received: ota=false; update_firmware()
             }
         }
